@@ -1,753 +1,581 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { 
-  ChefHat, LogOut, Users, Trash2, IndianRupee, Sparkles, 
-  HelpCircle, RefreshCw, Check, X, AlertCircle, Bell, ArrowRight,
-  TrendingDown, TrendingUp, BarChart3, MessageSquare
-} from 'lucide-react';
-import { 
-  getEmergencyRequests, updateRequestStatus, EmergencyRequest,
-  getStudentAttendance, getMenuRating, historicalAttendance, monthlySavings
-} from '../utils/mockData';
-
-// ChartJS setup
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  BarElement,
-  Title,
-  Tooltip,
-  Legend,
-  Filler
-} from 'chart.js';
+import { LogOut, Users, TrendingDown, IndianRupee, PieChart, Sparkles, AlertTriangle, Send, Check, X, Clock, AlertOctagon, UserCircle, PlayCircle, ThumbsUp, ThumbsDown, MessageSquare } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Line, Bar } from 'react-chartjs-2';
+import {
+  Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, BarElement, Title, Tooltip, Legend, Filler
+} from 'chart.js';
+import { toast } from 'sonner';
+import QRScanner from '@/components/QRScanner';
 
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  BarElement,
-  Title,
-  Tooltip,
-  Legend,
-  Filler
-);
-
-interface AIInsights {
-  predictedPortions: number;
-  estimatedWasteKg: number;
-  costSavingsINR: number;
-  wasteReductionPercent: number;
-  menuSuggestions: string[];
-  generalInsight: string;
-  isMock?: boolean;
-}
-
-interface WhatIfResponse {
-  wasteImpactKg: number;
-  costImpactINR: number;
-  adjustmentSuggestion: string;
-  scenarioSummary: string;
-  isMock?: boolean;
-}
+ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, BarElement, Title, Tooltip, Legend, Filler);
 
 export default function AdminDashboard() {
   const router = useRouter();
+  const [user, setUser] = useState<any>(null);
+  
+  // Data States
+  const [stats, setStats] = useState({ total: 0, attending: 0, predictedWasteSavedKg: 0, moneySaved: 0, wasteReductionPct: 0, collectedCount: 0, pendingCollectionCount: 0 });
+  const [students, setStudents] = useState<any[]>([]);
+  const [wasteRiskStudents, setWasteRiskStudents] = useState<any[]>([]);
+  const [emergencyReqs, setEmergencyReqs] = useState<any[]>([]);
+  const [feedback, setFeedback] = useState<any>(null);
+  const [poll, setPoll] = useState<any>(null);
+  
+  // Controls
+  const [cutoffTime, setCutoffTime] = useState('08:30');
+  const [whatIfInput, setWhatIfInput] = useState('');
+  
+  // AI State
+  const [aiInsight, setAiInsight] = useState<any>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [isAutoMarking, setIsAutoMarking] = useState(false);
+  const [showScanner, setShowScanner] = useState(false);
 
-  // Auth Guard
   useEffect(() => {
-    const role = localStorage.getItem('smartplate_user_role');
-    if (role !== 'admin') {
+    const storedUser = localStorage.getItem('smartplate_user');
+    if (!storedUser) {
       router.push('/');
+      return;
     }
+    const parsedUser = JSON.parse(storedUser);
+    if (parsedUser.role !== 'admin') {
+      router.push('/');
+      return;
+    }
+    setUser(parsedUser);
+    loadData();
   }, [router]);
 
-  // States
-  const [mounted, setMounted] = useState(false);
-  const [requests, setRequests] = useState<EmergencyRequest[]>([]);
-  const [attendingTomorrowCount, setAttendingTomorrowCount] = useState(48);
-  const [thumbsUpCount, setThumbsUpCount] = useState(36);
-  const [thumbsDownCount, setThumbsDownCount] = useState(12);
-  const [feedbackComments, setFeedbackComments] = useState<Array<{name: string, comment: string, rating: 'up' | 'down'}>>([
-    { name: "Amit Kumar", comment: "The Biryani spice level was perfect today, but rice was slightly dry.", rating: "up" },
-    { name: "Pooja Hegde", comment: "A bit too greasy. Portions are too large, please reduce rice portion.", rating: "down" },
-    { name: "Rohit Sharma", comment: "Delicious! Love the Friday special Biryani.", rating: "up" }
-  ]);
+  const formatTimeToAMPM = (time24: string) => {
+    if (!time24) return '';
+    const [hours, minutes] = time24.split(':').map(Number);
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    const hours12 = hours % 12 || 12;
+    return `${hours12}:${String(minutes).padStart(2, '0')} ${ampm}`;
+  };
 
-  // AI insights states
-  const [aiInsights, setAiInsights] = useState<AIInsights | null>(null);
-  const [aiLoading, setAiLoading] = useState(false);
-  const [aiError, setAiError] = useState('');
-
-  // What-If Simulator states
-  const [whatIfQuery, setWhatIfQuery] = useState('');
-  const [whatIfResponse, setWhatIfResponse] = useState<WhatIfResponse | null>(null);
-  const [whatIfLoading, setWhatIfLoading] = useState(false);
-
-  // Notification state
-  const [notification, setNotification] = useState<string | null>(null);
-
-  const loadDashboardState = () => {
-    // Sync emergency requests
-    setRequests(getEmergencyRequests());
-
-    // Sync student tomorrow attendance
-    const studentAtt = getStudentAttendance();
-    // Default attendance is 48. If student opt-out, reduce it by 1.
-    setAttendingTomorrowCount(studentAtt.attendingTomorrow ? 48 : 47);
-
-    // Sync student feedback rating
-    const studentRating = getMenuRating();
-    if (studentRating) {
-      if (studentRating.rating === 'up') {
-        setThumbsUpCount(37);
-        setThumbsDownCount(12);
-      } else {
-        setThumbsUpCount(36);
-        setThumbsDownCount(13);
+  const loadData = async () => {
+    try {
+      // 1. Fetch Dashboard Stats
+      const resDash = await fetch('/api/admin/dashboard');
+      const dataDash = await resDash.json();
+      if (dataDash.success) {
+        setStats(dataDash.stats);
+        setStudents(dataDash.students);
+        setWasteRiskStudents(dataDash.wasteRiskStudents);
       }
 
-      // Append student review to comments list if not already there
-      const studentComment = studentRating.comment.trim();
-      const commentExists = feedbackComments.some(c => c.name === "Rahul Sharma");
-      if (studentComment && !commentExists) {
-        setFeedbackComments(prev => [
-          { name: "Rahul Sharma (You)", comment: studentComment, rating: studentRating.rating },
-          ...prev
-        ]);
+      // 2. Fetch Settings
+      const resSettings = await fetch('/api/admin/settings');
+      const dataSettings = await resSettings.json();
+      if (dataSettings.success) setCutoffTime(dataSettings.cutoffTime);
+
+      // 3. Fetch Emergency
+      const resEmerg = await fetch('/api/admin/emergency');
+      const dataEmerg = await resEmerg.json();
+      if (dataEmerg.success) setEmergencyReqs(dataEmerg.requests);
+
+      // 4. Fetch Feedback
+      const resFb = await fetch('/api/admin/feedback');
+      const dataFb = await resFb.json();
+      if (dataFb.success) {
+        setFeedback(dataFb.feedback);
+        setPoll(dataFb.poll);
       }
+    } catch (e) {
+      console.error(e);
     }
   };
 
-  const fetchInsights = async () => {
-    setAiLoading(true);
-    setAiError('');
+  const saveCutoff = async () => {
     try {
-      const response = await fetch('/api/ai', {
+      const res = await fetch('/api/admin/settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'get_insights' })
+        body: JSON.stringify({ cutoffTime })
       });
-      const data = await response.json();
-      if (response.ok) {
-        setAiInsights(data);
-      } else {
-        setAiError(data.error || 'Failed to fetch insights');
+      if (res.ok) toast.success(`Lock time updated to ${formatTimeToAMPM(cutoffTime)} (IST)`);
+    } catch (e) {
+      toast.error("Failed to save settings");
+    }
+  };
+
+  const handleEmergency = async (id: string, action: 'approve'|'deny') => {
+    try {
+      const res = await fetch('/api/admin/emergency', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ requestId: id, action })
+      });
+      if (res.ok) {
+        setEmergencyReqs(prev => prev.filter(req => req._id !== id));
+        toast.success(`Request ${action}d successfully`);
       }
-    } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : String(err);
-      setAiError(`Network error while getting insights: ${errorMessage}`);
+    } catch (e) {
+      toast.error("Failed to update request");
+    }
+  };
+
+  const runAutoMark = async () => {
+    setIsAutoMarking(true);
+    try {
+      const res = await fetch('/api/admin/auto-mark', { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(data.message);
+        loadData(); // refresh UI
+      } else {
+        toast.error("Auto-mark failed");
+      }
+    } catch (e) {
+      toast.error("Failed to connect to server");
+    } finally {
+      setIsAutoMarking(false);
+    }
+  };
+
+  const generateAI = async (isWhatIf = false) => {
+    setAiLoading(true);
+    try {
+      const res = await fetch('/api/ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          stats,
+          menu: "Dal Tadka, Jeera Rice, Roti",
+          sentiment: "40% negative due to repetition",
+          whatIfQuery: isWhatIf ? whatIfInput : null
+        })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setAiInsight(data.data);
+        toast.success(isWhatIf ? "What-If Simulated" : "AI Insights Generated");
+        if (isWhatIf) setWhatIfInput('');
+      } else {
+        toast.error("AI Generation failed");
+      }
+    } catch (e) {
+      toast.error("Failed to connect to AI");
     } finally {
       setAiLoading(false);
     }
   };
 
-  // Load and sync data
-  useEffect(() => {
-    Promise.resolve().then(() => {
-      setMounted(true);
-      fetchInsights();
-      loadDashboardState();
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const handleWhatIfSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!whatIfQuery.trim()) return;
-    setWhatIfLoading(true);
-    try {
-      const response = await fetch('/api/ai', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'what_if', query: whatIfQuery })
-      });
-      const data = await response.json();
-      if (response.ok) {
-        setWhatIfResponse(data);
-      }
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setWhatIfLoading(false);
-    }
+  const lineData = {
+    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+    datasets: [{
+      label: 'Attendance',
+      data: [45, 42, 48, 50, 38, 20, stats.attending || 0],
+      borderColor: '#22c55e',
+      backgroundColor: 'rgba(34, 197, 94, 0.1)',
+      fill: true,
+      tension: 0.4
+    }]
   };
 
-  const handleRequestAction = (id: string, status: 'Approved' | 'Denied') => {
-    const updated = updateRequestStatus(id, status);
-    setRequests(updated);
-    showToast(`Request was ${status.toLowerCase()} successfully.`);
+  const barData = {
+    labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4'],
+    datasets: [{
+      label: 'Savings (₹)',
+      data: [1200, 1800, 1500, 2100 + stats.moneySaved],
+      backgroundColor: '#3b82f6',
+      borderRadius: 4
+    }]
+  };
 
-    // If request type is Cancel Meals and status is approved, we reduce attendance count
-    const approvedRequest = updated.find(r => r.id === id);
-    if (approvedRequest && approvedRequest.type === 'Cancel Meals' && status === 'Approved') {
-      setAttendingTomorrowCount(prev => Math.max(0, prev - 1));
+  const chartOptions = {
+    responsive: true,
+    plugins: { legend: { display: false } },
+    scales: {
+      y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#64748b' } },
+      x: { grid: { display: false }, ticks: { color: '#64748b' } }
     }
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('smartplate_user_role');
-    localStorage.removeItem('smartplate_username');
+    localStorage.clear();
     router.push('/');
   };
 
-  const handleSendReminder = () => {
-    const missingAttendance = 55 - attendingTomorrowCount - 1; // excluding opted out
-    showToast(`🔔 Daily reminder notification pushed to ${Math.max(3, missingAttendance)} students!`);
-  };
+  if (!user) return <div className="min-h-screen bg-background" />;
 
-  const showToast = (message: string) => {
-    setNotification(message);
-    setTimeout(() => {
-      setNotification(null);
-    }, 3500);
-  };
-
-  // Chart Data definitions
-  const attendanceChartData = {
-    labels: historicalAttendance.map(d => d.day),
-    datasets: [
-      {
-        label: 'PG Students Registered',
-        data: historicalAttendance.map(d => d.total),
-        borderColor: '#475569',
-        borderDash: [5, 5],
-        backgroundColor: 'transparent',
-        pointRadius: 0,
-      },
-      {
-        label: 'Attending Count',
-        data: historicalAttendance.map(d => d.attending),
-        borderColor: '#22c55e',
-        backgroundColor: 'rgba(34, 197, 94, 0.1)',
-        fill: true,
-        tension: 0.3,
-        pointBackgroundColor: '#22c55e',
-        pointBorderColor: '#090d16',
-        pointHoverRadius: 6,
-      }
-    ]
-  };
-
-  const savingsChartData = {
-    labels: monthlySavings.map(s => s.month),
-    datasets: [
-      {
-        label: 'Savings (₹)',
-        data: monthlySavings.map(s => s.moneySavedINR),
-        backgroundColor: '#22c55e',
-        hoverBackgroundColor: '#16a34a',
-        borderRadius: 8,
-      }
-    ]
-  };
+  const isMajorityDislike = feedback && feedback.downVotes > feedback.upVotes && feedback.totalRatings > 2;
+  const isChangeVoted = poll && poll.changeVotes > poll.keepVotes && poll.totalPolls > 2;
 
   return (
-    <div className="min-h-screen bg-[#090d16] pb-12 relative">
-      {/* Toast Notification */}
-      {notification && (
-        <div className="fixed bottom-5 right-5 z-50 p-4 bg-slate-900 border border-[#22c55e] text-white rounded-2xl shadow-2xl flex items-center gap-3 animate-slide-in">
-          <div className="p-1.5 bg-emerald-950/50 rounded-xl text-[#22c55e]">
-            <Check className="h-4 w-4" />
-          </div>
-          <p className="text-xs font-semibold">{notification}</p>
-        </div>
-      )}
-
-      {/* Header */}
-      <header className="sticky top-0 z-40 bg-slate-900/80 backdrop-blur-md border-b border-slate-800 px-4 sm:px-6 lg:px-8 py-4">
+    <div className="min-h-screen bg-background text-foreground pb-20">
+      <header className="bg-card border-b border-border px-6 py-4 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-slate-950 border border-slate-800 rounded-xl">
-              <ChefHat className="h-6 w-6 text-[#22c55e]" />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold text-white tracking-wide">SmartPlate AI</h1>
-              <p className="text-[10px] text-[#22c55e] font-bold tracking-wider uppercase">Mess Administrator</p>
-            </div>
+          <div className="flex items-center gap-2">
+            <div className="p-1.5 bg-primary rounded shadow-lg shadow-primary/20"><Sparkles className="h-5 w-5 text-white" /></div>
+            <h1 className="text-xl font-black text-white">SmartPlate Admin</h1>
           </div>
-
-          <div className="flex items-center gap-3">
-            <button
-              onClick={handleSendReminder}
-              className="flex items-center gap-2 px-3 py-1.5 text-xs font-bold text-[#22c55e] bg-emerald-950/20 border border-emerald-800/40 hover:bg-emerald-950/40 rounded-lg transition duration-200"
-            >
-              <Bell className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Send Reminder</span>
+          <div className="flex items-center gap-4">
+            <button onClick={() => setShowScanner(true)} className="px-4 py-2 bg-primary/20 text-primary hover:bg-primary hover:text-white border border-primary/50 font-bold rounded-xl text-sm transition shadow-lg shadow-primary/10">
+              Open QR Scanner
             </button>
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-red-400 hover:text-white bg-slate-950 border border-slate-800 hover:border-red-500/50 hover:bg-red-950/20 rounded-lg transition duration-200"
-            >
-              <LogOut className="h-3.5 w-3.5" />
-              <span>Logout</span>
+            <button onClick={handleLogout} className="p-2 text-muted hover:text-white transition">
+              <LogOut className="h-5 w-5" />
             </button>
           </div>
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8 space-y-6">
+      <main className="max-w-7xl mx-auto px-4 mt-8 space-y-8">
         
-        {/* TOP STATS CARD GRID */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 flex items-center gap-4 transition duration-300 hover:border-slate-700">
-            <div className="p-4 bg-slate-950 border border-slate-800 rounded-2xl text-slate-400">
-              <Users className="h-6 w-6" />
+        {/* Prominent Top Stats */}
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          <div className="bg-card border border-border p-5 rounded-2xl flex flex-col shadow-lg">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[10px] text-muted uppercase font-bold tracking-wider">Total Students</span>
+              <Users className="h-4 w-4 text-muted" />
             </div>
-            <div>
-              <span className="text-[10px] text-slate-500 font-bold uppercase">Total Registered Students</span>
-              <p className="text-3xl font-black text-white">55</p>
-              <p className="text-[10px] text-slate-400 mt-0.5">Assigned to PG Hostel Wing B</p>
+            <span className="text-3xl font-black text-white">{stats.total}</span>
+          </div>
+          <div className="bg-primary/10 border border-primary/20 p-5 rounded-2xl flex flex-col shadow-[0_0_15px_-3px_rgba(34,197,94,0.15)]">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[10px] text-primary uppercase font-bold tracking-wider">Attending Today</span>
+              <Check className="h-4 w-4 text-primary" />
+            </div>
+            <div className="flex items-end gap-2">
+              <span className="text-3xl font-black text-primary">{stats.attending || 0}</span>
+              <span className="text-xs text-primary/80 font-bold mb-1">Total</span>
+            </div>
+            <div className="mt-2 pt-2 border-t border-primary/20 flex justify-between text-[10px] font-bold text-primary/80">
+              <span>Collected: {stats.collectedCount || 0}</span>
+              <span>Pending: {stats.pendingCollectionCount || 0}</span>
             </div>
           </div>
-
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 flex items-center gap-4 transition duration-300 hover:border-[#22c55e]/50">
-            <div className="p-4 bg-emerald-950/40 border border-emerald-900/30 rounded-2xl text-[#22c55e]">
-              <Sparkles className="h-6 w-6 animate-pulse" />
+          <div className="bg-gradient-to-br from-green-500/20 to-green-500/5 border border-primary/40 p-5 rounded-2xl flex flex-col shadow-[0_0_20px_-3px_rgba(34,197,94,0.3)]">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[10px] text-white uppercase font-bold tracking-wider">Waste Saved</span>
+              <TrendingDown className="h-4 w-4 text-primary" />
             </div>
-            <div>
-              <span className="text-[10px] text-[#22c55e] font-bold uppercase tracking-wider">Tomorrow&apos;s Attendance</span>
-              <p className="text-3xl font-black text-white">{attendingTomorrowCount} <span className="text-sm font-semibold text-slate-400">/ 55</span></p>
-              <p className="text-[10px] text-slate-400 mt-0.5">Dynamic update based on choices</p>
-            </div>
+            <span className="text-3xl font-black text-white">{stats.predictedWasteSavedKg}<span className="text-lg">kg</span></span>
           </div>
-
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 flex items-center gap-4 transition duration-300 hover:border-slate-700">
-            <div className="p-4 bg-emerald-950/40 border border-slate-800 rounded-2xl text-emerald-400">
-              <Trash2 className="h-6 w-6" />
+          <div className="bg-gradient-to-br from-blue-500/20 to-blue-500/5 border border-blue-500/40 p-5 rounded-2xl flex flex-col shadow-[0_0_20px_-3px_rgba(59,130,246,0.3)]">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[10px] text-white uppercase font-bold tracking-wider">Money Saved</span>
+              <IndianRupee className="h-4 w-4 text-blue-400" />
             </div>
-            <div>
-              <span className="text-[10px] text-slate-500 font-bold uppercase">Estimated Waste Saved</span>
-              <p className="text-3xl font-black text-[#22c55e]">
-                {aiInsights ? `${(aiInsights.wasteReductionPercent * 0.15).toFixed(1)} kg` : 'Calculating...'}
-              </p>
-              <p className="text-[10px] text-slate-400 mt-0.5">This week vs baseline preparation</p>
+            <span className="text-3xl font-black text-white">₹{stats.moneySaved}</span>
+          </div>
+          <div className="bg-gradient-to-br from-primary/30 to-primary/10 border border-primary/50 p-5 rounded-2xl flex flex-col shadow-xl">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[10px] text-white uppercase font-bold tracking-wider">Reduction %</span>
+              <PieChart className="h-4 w-4 text-white" />
             </div>
+            <span className="text-3xl font-black text-white">{stats.wasteReductionPct}%</span>
           </div>
         </div>
 
-        {/* SECTION: AI INSIGHTS PANEL (THE HIGHLIGHT) */}
-        <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 md:p-8 relative overflow-hidden transition-all duration-300 hover:border-emerald-500/20">
-          {/* Neon gradient mesh behind */}
-          <div className="absolute top-0 right-0 w-[30%] h-[100%] bg-gradient-to-l from-[#22c55e]/5 to-transparent pointer-events-none" />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-            <div className="flex items-center gap-2">
-              <span className="p-1.5 bg-emerald-950/40 border border-[#22c55e]/30 rounded-xl text-[#22c55e]">
-                <Sparkles className="h-5 w-5" />
-              </span>
+          {/* Main Left Content */}
+          <div className="lg:col-span-2 space-y-8">
+            
+            {/* Auto Lock & Controls */}
+            <div className="bg-card border border-border rounded-3xl p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 shadow-xl">
               <div>
-                <h2 className="text-xl font-bold text-white tracking-wide">AI Food waste Insights</h2>
-                <p className="text-xs text-slate-400">Real-time optimization predictions from Gemini API</p>
+                <h3 className="text-sm font-bold text-white flex items-center gap-2"><Clock className="h-4 w-4 text-warning"/> Daily Auto-Lock Time (IST)</h3>
+                <p className="text-xs text-muted mt-1">Students cannot change attendance after {formatTimeToAMPM(cutoffTime)}.</p>
+              </div>
+              <div className="flex items-center gap-3 w-full md:w-auto">
+                <input 
+                  type="time" 
+                  value={cutoffTime}
+                  onChange={(e) => setCutoffTime(e.target.value)}
+                  className="bg-background border border-border text-white px-4 py-3 rounded-xl focus:outline-none focus:border-primary shadow-inner"
+                />
+                <button onClick={saveCutoff} className="px-6 py-3 bg-primary hover:bg-primary-dark text-white text-sm font-black rounded-xl shadow-lg transition">Save IST Lock</button>
               </div>
             </div>
 
-            <button
-              onClick={fetchInsights}
-              disabled={aiLoading}
-              className="self-start sm:self-center flex items-center gap-2 px-3 py-2 text-xs font-bold bg-slate-950 border border-slate-800 hover:border-[#22c55e] text-slate-300 hover:text-white rounded-xl transition duration-200"
-            >
-              <RefreshCw className={`h-3.5 w-3.5 ${aiLoading ? 'animate-spin text-[#22c55e]' : ''}`} />
-              Update AI Parameters
-            </button>
+            {/* Auto-Mark Row */}
+            <div className="bg-warning/10 border border-warning/30 rounded-3xl p-6 flex flex-col md:flex-row items-center justify-between gap-4 shadow-xl">
+              <div>
+                <h3 className="text-sm font-bold text-warning flex items-center gap-2">Execute Auto-Mark</h3>
+                <p className="text-xs text-warning/80 mt-1">Force all "Pending" students to "Not Going". Run this after Lock Time.</p>
+              </div>
+              <button 
+                onClick={runAutoMark}
+                disabled={isAutoMarking}
+                className="px-6 py-3 bg-warning text-background hover:bg-yellow-500 text-sm font-black rounded-xl shadow-lg transition flex items-center gap-2 disabled:opacity-50"
+              >
+                {isAutoMarking ? <div className="w-4 h-4 border-2 border-background border-t-transparent rounded-full animate-spin" /> : <><PlayCircle className="h-4 w-4" /> Run Auto Mark Now</>}
+              </button>
+            </div>
+
+            {/* Student Feedback & Polling */}
+            <div className="bg-card border border-border rounded-3xl p-6 shadow-xl relative overflow-hidden">
+               <h3 className="text-sm font-bold text-muted uppercase tracking-wider mb-6 flex items-center gap-2">
+                 <MessageSquare className="h-4 w-4" /> Student Feedback & Polling
+               </h3>
+
+               {/* Alerts */}
+               <div className="flex flex-col gap-3 mb-6">
+                 {isMajorityDislike && (
+                   <motion.div initial={{opacity:0}} animate={{opacity:1}} className="bg-danger/10 border border-danger/40 p-3 rounded-xl flex items-center gap-3 shadow-[0_0_15px_-3px_rgba(239,68,68,0.3)]">
+                     <AlertOctagon className="h-5 w-5 text-danger" />
+                     <span className="text-danger text-sm font-bold">Majority Dislike Alert: Today's menu is highly disliked.</span>
+                   </motion.div>
+                 )}
+                 {isChangeVoted && (
+                   <motion.div initial={{opacity:0}} animate={{opacity:1}} className="bg-warning/10 border border-warning/40 p-3 rounded-xl flex items-center gap-3 shadow-[0_0_15px_-3px_rgba(234,179,8,0.3)]">
+                     <AlertTriangle className="h-5 w-5 text-warning" />
+                     <span className="text-warning text-sm font-bold">Menu Change Requested: Students voted to change this item.</span>
+                   </motion.div>
+                 )}
+               </div>
+
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                 {/* Rating Summary */}
+                 <div className="bg-background border border-border rounded-2xl p-5">
+                   <h4 className="text-xs text-muted uppercase font-bold tracking-wider mb-4">Today's Ratings</h4>
+                   <div className="flex gap-4">
+                     <div className="flex-1 bg-primary/10 border border-primary/20 rounded-xl p-4 text-center">
+                       <ThumbsUp className="h-5 w-5 text-primary mx-auto mb-1" />
+                       <span className="block text-2xl font-black text-primary">{feedback?.upVotes || 0}</span>
+                     </div>
+                     <div className="flex-1 bg-danger/10 border border-danger/20 rounded-xl p-4 text-center">
+                       <ThumbsDown className="h-5 w-5 text-danger mx-auto mb-1" />
+                       <span className="block text-2xl font-black text-danger">{feedback?.downVotes || 0}</span>
+                     </div>
+                   </div>
+                 </div>
+
+                 {/* Poll Summary */}
+                 <div className="bg-background border border-border rounded-2xl p-5">
+                   <h4 className="text-xs text-muted uppercase font-bold tracking-wider mb-4">Change Menu Poll</h4>
+                   <div className="flex justify-between text-sm font-bold mb-2">
+                     <span className="text-warning">Change It: {poll?.changeVotes || 0}</span>
+                     <span className="text-primary">Keep It: {poll?.keepVotes || 0}</span>
+                   </div>
+                   <div className="w-full bg-primary/20 rounded-full h-2 flex overflow-hidden">
+                     {poll?.totalPolls > 0 && (
+                       <div 
+                         style={{ width: `${(poll.changeVotes / poll.totalPolls) * 100}%` }} 
+                         className="bg-warning h-full"
+                       />
+                     )}
+                   </div>
+                 </div>
+               </div>
+
+               {/* Comments */}
+               <div className="mt-6">
+                 <h4 className="text-xs text-muted uppercase font-bold tracking-wider mb-3">Recent Comments</h4>
+                 <div className="space-y-3 max-h-[200px] overflow-y-auto pr-2">
+                   {feedback?.comments?.length === 0 ? (
+                     <p className="text-sm text-muted">No comments yet.</p>
+                   ) : (
+                     feedback?.comments?.map((c: any, i: number) => (
+                       <div key={i} className="bg-background border border-border rounded-xl p-3 flex items-start gap-3">
+                         <div className={`p-1.5 rounded-md shrink-0 ${c.rating === 'up' ? 'bg-primary/20 text-primary' : 'bg-danger/20 text-danger'}`}>
+                           {c.rating === 'up' ? <ThumbsUp className="h-3 w-3" /> : <ThumbsDown className="h-3 w-3" />}
+                         </div>
+                         <div>
+                           <p className="text-[10px] text-muted font-bold mb-0.5">{c.name}</p>
+                           <p className="text-sm text-white">{c.comment}</p>
+                         </div>
+                       </div>
+                     ))
+                   )}
+                 </div>
+               </div>
+            </div>
+
+            {/* Waste Risk & Emergency */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              
+              {/* Waste Risk Students */}
+              <div className="bg-danger/5 border border-danger/20 rounded-3xl p-6 shadow-xl relative overflow-hidden flex flex-col">
+                <div className="absolute top-0 right-0 p-4 opacity-10"><AlertOctagon className="h-24 w-24 text-danger" /></div>
+                <h3 className="text-sm font-bold text-danger uppercase tracking-wider mb-4 relative z-10 flex items-center gap-2"><AlertOctagon className="h-4 w-4" /> Waste Risk Panel</h3>
+                <div className="space-y-3 relative z-10 overflow-y-auto max-h-[300px]">
+                  {wasteRiskStudents.length === 0 ? (
+                    <p className="text-sm text-muted">No high-risk students found.</p>
+                  ) : (
+                    wasteRiskStudents.map(student => (
+                      <div key={student.id} className="bg-background/80 border border-border rounded-xl p-3 flex justify-between items-center shadow-sm">
+                        <div>
+                          <p className="text-sm font-bold text-white">{student.name}</p>
+                          <p className="text-[10px] text-danger font-bold mt-0.5">{student.missed} meals marked but skipped</p>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              {/* Emergency Requests */}
+              <div className="bg-card border border-border rounded-3xl p-6 shadow-xl flex flex-col">
+                 <h3 className="text-sm font-bold text-muted uppercase tracking-wider mb-4 flex items-center gap-2">
+                   <AlertTriangle className="h-4 w-4 text-warning" /> Emergency Requests
+                 </h3>
+                 <div className="space-y-3 overflow-y-auto max-h-[300px]">
+                   <AnimatePresence>
+                     {emergencyReqs.length === 0 ? (
+                       <motion.p initial={{opacity:0}} animate={{opacity:1}} className="text-sm text-muted text-center py-6">No pending requests.</motion.p>
+                     ) : (
+                       emergencyReqs.map(req => (
+                         <motion.div key={req._id} initial={{opacity:1, height:'auto'}} exit={{opacity:0, height:0}} className="bg-background border border-border rounded-xl p-4 overflow-hidden shadow-sm">
+                           <p className="text-sm font-bold text-white">{req.userId?.name || 'Unknown'}</p>
+                           <p className="text-xs text-muted mt-1 mb-4">{req.reason}</p>
+                           <div className="flex gap-2">
+                             <button onClick={()=>handleEmergency(req._id, 'approve')} className="flex-1 py-2 bg-primary/10 border border-primary/20 text-primary rounded-lg text-xs font-bold hover:bg-primary hover:text-white transition">Approve</button>
+                             <button onClick={()=>handleEmergency(req._id, 'deny')} className="flex-1 py-2 bg-danger/10 border border-danger/20 text-danger rounded-lg text-xs font-bold hover:bg-danger hover:text-white transition">Deny</button>
+                           </div>
+                         </motion.div>
+                       ))
+                     )}
+                   </AnimatePresence>
+                 </div>
+              </div>
+            </div>
+
+            {/* All Students List */}
+            <div className="bg-card border border-border rounded-3xl p-6 shadow-xl">
+               <h3 className="text-sm font-bold text-muted uppercase tracking-wider mb-4 flex items-center gap-2">
+                 <UserCircle className="h-4 w-4" /> All Students Register
+               </h3>
+               <div className="overflow-x-auto max-h-[400px]">
+                 <table className="w-full text-left text-sm">
+                   <thead className="sticky top-0 bg-card z-10">
+                     <tr className="border-b border-border text-muted">
+                       <th className="py-3 font-bold">Student Name</th>
+                       <th className="py-3 font-bold">Today's Status</th>
+                       <th className="py-3 font-bold">Food Collected</th>
+                       <th className="py-3 font-bold">Waste Risk</th>
+                     </tr>
+                   </thead>
+                   <tbody className="divide-y divide-border">
+                     {students.length === 0 ? (
+                       <tr><td colSpan={4} className="py-6 text-center text-muted">No students found</td></tr>
+                     ) : (
+                       students.map(s => (
+                         <tr key={s.id}>
+                           <td className="py-4 text-white font-medium">{s.name}</td>
+                           <td className="py-4">
+                             {s.status === 'going' && <span className="px-2 py-1 bg-primary/10 text-primary border border-primary/20 rounded text-[10px] uppercase font-bold tracking-wider">Going</span>}
+                             {s.status === 'not_going' && <span className="px-2 py-1 bg-danger/10 text-danger border border-danger/20 rounded text-[10px] uppercase font-bold tracking-wider">Not Going</span>}
+                             {s.status === 'pending' && <span className="px-2 py-1 bg-background border border-border text-muted rounded text-[10px] uppercase font-bold tracking-wider">Pending</span>}
+                           </td>
+                           <td className="py-4">
+                             {s.status === 'going' ? (
+                               s.collectedFood ? 
+                               <span className="text-primary font-bold text-xs flex items-center gap-1"><Check className="h-3 w-3"/> Collected</span> : 
+                               <span className="text-warning font-bold text-xs flex items-center gap-1"><Clock className="h-3 w-3"/> Pending QR</span>
+                             ) : <span className="text-muted text-xs">-</span>}
+                           </td>
+                           <td className="py-4">
+                             {s.risk ? <span className="text-danger font-bold text-xs flex items-center gap-1"><AlertOctagon className="h-3 w-3"/> High Risk</span> : <span className="text-muted text-xs">Normal</span>}
+                           </td>
+                         </tr>
+                       ))
+                     )}
+                   </tbody>
+                 </table>
+               </div>
+            </div>
+
           </div>
 
-          {aiLoading ? (
-            <div className="py-16 flex flex-col items-center justify-center space-y-3">
-              <div className="w-8 h-8 border-4 border-[#22c55e] border-t-transparent rounded-full animate-spin" />
-              <p className="text-xs text-slate-400 font-medium">Prompting Gemini to analyze trends...</p>
-            </div>
-          ) : aiError ? (
-            <div className="flex items-center gap-3 p-4 bg-red-950/20 border border-red-900/30 rounded-2xl text-red-400 text-xs">
-              <AlertCircle className="h-5 w-5 shrink-0" />
-              <span>{aiError}</span>
-            </div>
-          ) : aiInsights ? (
-            <div className="space-y-6">
+          {/* Right Sidebar: AI Intelligence */}
+          <div className="space-y-6">
+            <motion.div className="bg-gradient-to-b from-card to-background border border-border rounded-3xl p-6 relative overflow-hidden shadow-2xl">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-primary/10 rounded-full blur-[80px]" />
               
-              {/* Warnings / Fallback messages */}
-              {aiInsights.isMock && (
-                <div className="flex items-center justify-between gap-2.5 p-3 rounded-2xl bg-amber-950/30 border border-amber-800/40 text-amber-400 text-xs">
-                  <div className="flex items-center gap-2">
-                    <AlertCircle className="h-4.5 w-4.5" />
-                    <span>Using simulated AI logic. To query live, add a `GEMINI_API_KEY` to your local env.</span>
-                  </div>
-                  <span className="text-[10px] font-bold bg-amber-950 px-2 py-0.5 rounded-full border border-amber-900">DEMO MODE</span>
-                </div>
-              )}
-
-              {/* AI Key parameters metrics grid */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="bg-slate-950/80 border border-slate-850 p-4 rounded-2xl text-center">
-                  <span className="text-[10px] text-slate-500 font-bold uppercase block mb-1">Portion Preparation Target</span>
-                  <span className="text-2xl font-black text-white">{aiInsights.predictedPortions} portions</span>
-                  <span className="text-[10px] text-slate-400 block mt-1">Recommended baseline is 55</span>
-                </div>
-                <div className="bg-slate-950/80 border border-slate-850 p-4 rounded-2xl text-center">
-                  <span className="text-[10px] text-slate-500 font-bold uppercase block mb-1">Expected Plate Waste</span>
-                  <span className="text-2xl font-black text-red-400">{aiInsights.estimatedWasteKg} kg</span>
-                  <span className="text-[10px] text-slate-400 block mt-1">Reduction from ~12 kg baseline</span>
-                </div>
-                <div className="bg-slate-950/80 border border-slate-850 p-4 rounded-2xl text-center">
-                  <span className="text-[10px] text-slate-500 font-bold uppercase block mb-1">Projected Cost Savings</span>
-                  <span className="text-2xl font-black text-[#22c55e] flex items-center justify-center gap-0.5">
-                    <IndianRupee className="h-4 w-4 shrink-0" />
-                    {aiInsights.costSavingsINR}
-                  </span>
-                  <span className="text-[10px] text-slate-400 block mt-1">Based on saved raw ingredients</span>
-                </div>
-                <div className="bg-slate-950/80 border border-slate-850 p-4 rounded-2xl text-center">
-                  <span className="text-[10px] text-slate-500 font-bold uppercase block mb-1">Waste Reduction %</span>
-                  <span className="text-2xl font-black text-[#22c55e] flex items-center justify-center gap-0.5">
-                    <TrendingDown className="h-5 w-5 shrink-0" />
-                    {aiInsights.wasteReductionPercent}%
-                  </span>
-                  <span className="text-[10px] text-slate-400 block mt-1">Highly Optimized operation</span>
+              <div className="flex items-center gap-3 mb-6 relative z-10">
+                <div className="p-2 bg-primary rounded-xl"><Sparkles className="h-5 w-5 text-white" /></div>
+                <div>
+                  <h2 className="font-black text-lg text-white">AI Intelligence</h2>
+                  <p className="text-xs text-primary font-bold">Powered by Gemini</p>
                 </div>
               </div>
 
-              {/* Suggestions and general insights summary */}
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 pt-4 border-t border-slate-800/80">
-                <div className="lg:col-span-2 space-y-3">
-                  <h3 className="text-sm font-bold text-white">Recommended Action Plan</h3>
-                  <ul className="space-y-2.5">
-                    {aiInsights.menuSuggestions.map((s, idx) => (
-                      <li key={idx} className="flex items-start gap-2 text-xs text-slate-300">
-                        <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-emerald-950/40 text-[#22c55e] text-[9px] font-bold border border-[#22c55e]/20">
-                          {idx + 1}
-                        </span>
-                        <span>{s}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-                <div className="p-4 bg-slate-950/50 border border-slate-850 rounded-2xl space-y-2">
-                  <h3 className="text-xs font-bold text-[#22c55e] tracking-wider uppercase">Strategic Summary</h3>
-                  <p className="text-xs text-slate-400 leading-relaxed">
-                    {aiInsights.generalInsight}
-                  </p>
-                </div>
-              </div>
-
-            </div>
-          ) : null}
-        </div>
-
-        {/* SECTION: WHAT-IF SIMULATOR & EMERGENCY TABLE */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          
-          {/* What-If Simulator Card */}
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 transition duration-300 hover:border-slate-700 flex flex-col justify-between">
-            <div>
-              <div className="flex items-center gap-2 mb-4">
-                <span className="p-1.5 bg-emerald-950/40 border border-slate-800 rounded-xl text-emerald-400">
-                  <HelpCircle className="h-4.5 w-4.5" />
-                </span>
-                <h2 className="text-lg font-bold text-white">AI What-If Simulator</h2>
-              </div>
-              <p className="text-xs text-slate-400 mb-6">Test hypothetical scenarios (e.g. replacing ingredients, weather changes, or college event attendance drops) to analyze waste impact.</p>
-
-              <form onSubmit={handleWhatIfSubmit} className="space-y-4">
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    required
-                    value={whatIfQuery}
-                    onChange={(e) => setWhatIfQuery(e.target.value)}
-                    placeholder="E.g. What if we substitute rice with millets or 15 students leave early?"
-                    className="flex-1 p-3 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:border-[#22c55e]"
-                  />
-                  <button
-                    type="submit"
-                    disabled={whatIfLoading}
-                    className="px-4 py-3 bg-[#22c55e] hover:bg-[#16a34a] text-slate-950 font-bold rounded-xl text-xs flex items-center gap-1.5 disabled:opacity-50 transition duration-200 shrink-0"
+              {!aiInsight ? (
+                <div className="text-center py-10 relative z-10">
+                  <p className="text-sm text-muted mb-6">Analyze attendance, sentiment, and historical data to predict exact portions and optimize your vegetarian menu.</p>
+                  <button 
+                    onClick={() => generateAI(false)} 
+                    disabled={aiLoading}
+                    className="w-full py-4 bg-white text-background font-black rounded-xl text-sm flex items-center justify-center gap-2 hover:bg-slate-200 transition disabled:opacity-70 shadow-xl"
                   >
-                    {whatIfLoading ? (
-                      <div className="w-4 h-4 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
-                    ) : (
-                      <>
-                        Ask AI
-                        <ArrowRight className="h-3.5 w-3.5" />
-                      </>
-                    )}
+                    {aiLoading ? <div className="w-5 h-5 border-2 border-background border-t-transparent rounded-full animate-spin" /> : "Run AI Prediction"}
                   </button>
                 </div>
-              </form>
-
-              {/* Show What-If simulator predictions */}
-              {whatIfResponse && (
-                <div className="mt-6 p-4 bg-slate-950/80 border border-slate-800/80 rounded-2xl space-y-4 animate-fade-in">
-                  <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
-                    <span className="text-[10px] text-slate-500 font-bold uppercase">Simulator Projection</span>
-                    {whatIfResponse.isMock && (
-                      <span className="text-[9px] font-bold text-amber-500 bg-amber-950/40 border border-amber-900/40 px-2 py-0.5 rounded-full">SIMULATION</span>
-                    )}
+              ) : (
+                <div className="space-y-6 relative z-10">
+                  <div className="bg-background/80 backdrop-blur border border-border rounded-2xl p-4">
+                    <span className="block text-[10px] text-muted uppercase font-bold tracking-wider mb-2">Optimal Portions</span>
+                    <span className="block text-4xl font-black text-white">{aiInsight.optimalPortions}</span>
+                    <span className="text-xs text-primary font-bold">Saves ~{aiInsight.wasteAvoidedKg}kg of food</span>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <span className="text-[9px] text-slate-500 uppercase font-bold block mb-0.5">Wastage Impact</span>
-                      <span className={`text-base font-black ${whatIfResponse.wasteImpactKg <= 0 ? 'text-[#22c55e]' : 'text-red-400'}`}>
-                        {whatIfResponse.wasteImpactKg <= 0 ? '' : '+'}{whatIfResponse.wasteImpactKg} kg
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-[9px] text-slate-500 uppercase font-bold block mb-0.5">Financial Impact</span>
-                      <span className={`text-base font-black ${whatIfResponse.costImpactINR >= 0 ? 'text-[#22c55e]' : 'text-red-400'}`}>
-                        {whatIfResponse.costImpactINR >= 0 ? '+' : ''}₹{whatIfResponse.costImpactINR}
-                      </span>
+                  <div>
+                    <span className="block text-[10px] text-muted uppercase font-bold tracking-wider mb-2">Pure Veg Menu Recommendation</span>
+                    <div className="bg-primary/10 border border-primary/20 rounded-2xl p-4">
+                      <div className="flex justify-between items-start mb-2">
+                        <h4 className="font-bold text-white">{aiInsight.suggestedMenu}</h4>
+                        <span className="bg-primary text-white text-[10px] font-black px-2 py-0.5 rounded">{aiInsight.confidenceScore}% Match</span>
+                      </div>
+                      <p className="text-xs text-primary/80 leading-relaxed">{aiInsight.menuReason}</p>
                     </div>
                   </div>
 
-                  <div className="space-y-1">
-                    <span className="text-[9px] text-slate-500 uppercase font-bold block">Staff Action Guideline</span>
-                    <p className="text-xs text-white font-medium">{whatIfResponse.adjustmentSuggestion}</p>
-                  </div>
-
-                  <div className="text-[11px] text-slate-400 leading-relaxed border-t border-slate-900 pt-2">
-                    {whatIfResponse.scenarioSummary}
+                  <div>
+                    <span className="block text-[10px] text-muted uppercase font-bold tracking-wider mb-2">AI Analysis</span>
+                    <p className="text-sm text-muted leading-relaxed bg-card p-3 rounded-xl border border-border">{aiInsight.analysis}</p>
                   </div>
                 </div>
               )}
-            </div>
-            {!whatIfResponse && (
-              <div className="mt-6 border border-dashed border-slate-800 p-8 rounded-2xl text-center text-xs text-slate-500">
-                Submit a scenario above to compute AI projections.
-              </div>
-            )}
-          </div>
+            </motion.div>
 
-          {/* Emergency Requests Table */}
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 transition duration-300 hover:border-slate-700 flex flex-col justify-between">
-            <div>
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <span className="p-1.5 bg-slate-950 border border-slate-800 rounded-xl text-slate-400">
-                    <AlertCircle className="h-4.5 w-4.5" />
-                  </span>
-                  <h2 className="text-lg font-bold text-white">Emergency Request Panel</h2>
-                </div>
-                <span className="text-xs text-[#22c55e] font-semibold bg-emerald-950/20 border border-emerald-900/30 px-2 py-0.5 rounded-full">
-                  {requests.filter(r => r.status === 'Pending').length} Pending
-                </span>
-              </div>
-              <p className="text-xs text-slate-400 mb-6">Manage student-initiated meal cancellations and late dining check-ins.</p>
-
-              <div className="overflow-x-auto">
-                {requests.length === 0 ? (
-                  <p className="text-xs text-slate-500 text-center py-8">No emergency requests registered.</p>
-                ) : (
-                  <table className="w-full text-left text-xs border-collapse">
-                    <thead>
-                      <tr className="border-b border-slate-800 text-slate-400">
-                        <th className="py-2.5 font-bold">Student</th>
-                        <th className="py-2.5 font-bold">Request</th>
-                        <th className="py-2.5 font-bold">Meal/Date</th>
-                        <th className="py-2.5 font-bold text-center">Status</th>
-                        <th className="py-2.5 font-bold text-right">Actions</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-800/60">
-                      {requests.map((req) => (
-                        <tr key={req.id} className="hover:bg-slate-950/20 transition-all">
-                          <td className="py-3 pr-2">
-                            <p className="font-semibold text-white">{req.studentName}</p>
-                            <p className="text-[10px] text-slate-500">{req.studentId}</p>
-                          </td>
-                          <td className="py-3 pr-2">
-                            <span className="font-medium text-slate-300">{req.type}</span>
-                            <p className="text-[10px] text-slate-500 truncate max-w-[120px]" title={req.reason}>{req.reason}</p>
-                          </td>
-                          <td className="py-3 pr-2">
-                            <p className="text-slate-300">{req.mealType}</p>
-                            <p className="text-[10px] text-slate-500">{req.date}</p>
-                          </td>
-                          <td className="py-3 text-center pr-2">
-                            <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold border ${
-                              req.status === 'Approved' 
-                                ? 'bg-emerald-950/40 border-emerald-900/30 text-[#22c55e]' 
-                                : req.status === 'Denied' 
-                                  ? 'bg-red-950/40 border-red-900/30 text-red-400' 
-                                  : 'bg-amber-950/40 border-amber-900/30 text-amber-400'
-                            }`}>
-                              {req.status}
-                            </span>
-                          </td>
-                          <td className="py-3 text-right">
-                            {req.status === 'Pending' ? (
-                              <div className="flex items-center justify-end gap-1.5">
-                                <button
-                                  onClick={() => handleRequestAction(req.id, 'Approved')}
-                                  className="p-1 rounded-lg bg-emerald-950/50 border border-emerald-900/40 text-[#22c55e] hover:bg-emerald-500 hover:text-slate-950 transition"
-                                  title="Approve"
-                                >
-                                  <Check className="h-3.5 w-3.5" />
-                                </button>
-                                <button
-                                  onClick={() => handleRequestAction(req.id, 'Denied')}
-                                  className="p-1 rounded-lg bg-red-950/50 border border-red-900/40 text-red-400 hover:bg-red-500 hover:text-slate-950 transition"
-                                  title="Deny"
-                                >
-                                  <X className="h-3.5 w-3.5" />
-                                </button>
-                              </div>
-                            ) : (
-                              <span className="text-[10px] text-slate-600 font-bold">-</span>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                )}
-              </div>
+            {/* What-If Simulator */}
+            <div className="bg-gradient-to-br from-card to-background border border-border rounded-3xl p-8 shadow-2xl relative overflow-hidden">
+              <div className="absolute -top-10 -right-10 w-40 h-40 bg-primary/10 rounded-full blur-[50px] pointer-events-none" />
+              
+              <h3 className="text-lg font-black text-white mb-2 flex items-center gap-2">
+                What-If Simulator <span className="px-2 py-1 bg-primary/20 text-primary text-[10px] rounded font-bold uppercase tracking-wider shadow-sm">Beta</span>
+              </h3>
+              <p className="text-xs text-muted mb-6">Type a scenario below to generate instant, AI-driven insights for portion adjustments.</p>
+              
+              <textarea 
+                value={whatIfInput}
+                onChange={(e) => setWhatIfInput(e.target.value)}
+                className="w-full bg-background border border-border rounded-2xl p-5 text-sm text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary mb-6 min-h-[120px] shadow-inner" 
+                placeholder="e.g. What if there is a surprise college test tomorrow?" 
+              ></textarea>
+              
+              <button 
+                onClick={() => generateAI(true)}
+                disabled={aiLoading || !whatIfInput}
+                className="w-full py-4 bg-primary text-white font-black rounded-xl text-sm flex items-center justify-center gap-2 hover:bg-primary-dark transition disabled:opacity-50 shadow-lg shadow-primary/20"
+              >
+                {aiLoading ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <><Send className="h-4 w-4" /> Simulate Scenario</>}
+              </button>
             </div>
+
           </div>
 
         </div>
-
-        {/* SECTION: VISUALIZATIONS CHARTS GRID */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          
-          {/* Weekly Attendance Trend Chart */}
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 lg:col-span-2 transition duration-300 hover:border-slate-700">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <span className="p-1.5 bg-slate-950 border border-slate-800 rounded-xl text-slate-400">
-                  <TrendingUp className="h-4.5 w-4.5" />
-                </span>
-                <h2 className="text-lg font-bold text-white">7-Day Attendance Trend</h2>
-              </div>
-              <span className="text-[10px] text-slate-500">Weekly baseline preparation: 55</span>
-            </div>
-
-            <div className="h-[250px] flex items-center justify-center">
-              {mounted ? (
-                <Line 
-                  data={attendanceChartData} 
-                  options={{
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                      legend: {
-                        position: 'top',
-                        labels: { color: '#94a3b8', font: { size: 10 } }
-                      },
-                      tooltip: {
-                        backgroundColor: '#111827',
-                        borderColor: '#1e293b',
-                        borderWidth: 1,
-                        bodyColor: '#f8fafc',
-                        titleColor: '#22c55e',
-                      }
-                    },
-                    scales: {
-                      x: { grid: { color: 'rgba(30, 41, 59, 0.3)' }, ticks: { color: '#94a3b8' } },
-                      y: { grid: { color: 'rgba(30, 41, 59, 0.3)' }, ticks: { color: '#94a3b8' }, min: 0, max: 60 }
-                    }
-                  }} 
-                />
-              ) : (
-                <p className="text-xs text-slate-500">Loading charts...</p>
-              )}
-            </div>
-          </div>
-
-          {/* Monthly Cost Savings Chart */}
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 transition duration-300 hover:border-slate-700">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <span className="p-1.5 bg-slate-950 border border-slate-800 rounded-xl text-slate-400">
-                  <BarChart3 className="h-4.5 w-4.5" />
-                </span>
-                <h2 className="text-lg font-bold text-white">Cumulative savings</h2>
-              </div>
-              <span className="text-[10px] text-slate-500">In Indian Rupees (₹)</span>
-            </div>
-
-            <div className="h-[250px] flex items-center justify-center">
-              {mounted ? (
-                <Bar 
-                  data={savingsChartData} 
-                  options={{
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                      legend: { display: false },
-                      tooltip: {
-                        backgroundColor: '#111827',
-                        borderColor: '#1e293b',
-                        borderWidth: 1,
-                        bodyColor: '#f8fafc',
-                        callbacks: {
-                          label: function(context) { return ` Savings: ₹${context.raw}`; }
-                        }
-                      }
-                    },
-                    scales: {
-                      x: { grid: { display: false }, ticks: { color: '#94a3b8' } },
-                      y: { grid: { color: 'rgba(30, 41, 59, 0.3)' }, ticks: { color: '#94a3b8' } }
-                    }
-                  }} 
-                />
-              ) : (
-                <p className="text-xs text-slate-500">Loading charts...</p>
-              )}
-            </div>
-          </div>
-
-        </div>
-
-        {/* FEEDBACK CORNER */}
-        <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 transition duration-300 hover:border-slate-700">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-2">
-              <span className="p-1.5 bg-slate-950 border border-slate-800 rounded-xl text-slate-400">
-                <MessageSquare className="h-4.5 w-4.5" />
-              </span>
-              <h2 className="text-lg font-bold text-white">Student Voting & Comments</h2>
-            </div>
-            
-            <div className="flex gap-4 text-xs font-semibold">
-              <span className="text-[#22c55e] bg-emerald-950/20 border border-emerald-900/30 px-2.5 py-1 rounded-xl">
-                👍 {thumbsUpCount} Good
-              </span>
-              <span className="text-red-400 bg-red-950/20 border border-red-900/30 px-2.5 py-1 rounded-xl">
-                👎 {thumbsDownCount} Average
-              </span>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {feedbackComments.map((comment, index) => (
-              <div key={index} className="p-4 bg-slate-950 border border-slate-850 rounded-2xl flex flex-col justify-between space-y-3 relative">
-                <span className={`absolute top-4 right-4 text-xs font-bold px-1.5 py-0.5 rounded-full border ${
-                  comment.rating === 'up' 
-                    ? 'bg-emerald-950/30 border-emerald-900/40 text-[#22c55e]' 
-                    : 'bg-red-950/30 border-red-900/40 text-red-400'
-                }`}>
-                  {comment.rating === 'up' ? 'Good' : 'Avg/Bad'}
-                </span>
-                
-                <div>
-                  <span className="text-xs font-bold text-white block mb-1">{comment.name}</span>
-                  <p className="text-xs text-slate-400 leading-relaxed font-normal">&quot;{comment.comment}&quot;</p>
-                </div>
-
-                <span className="text-[9px] text-slate-600 block mt-2 text-right">Submitted today</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
       </main>
+
+      <AnimatePresence>
+        {showScanner && (
+          <QRScanner 
+            onClose={() => setShowScanner(false)} 
+            onScanSuccess={() => loadData()} // Refresh admin stats on success
+          />
+        )}
+      </AnimatePresence>
+
     </div>
   );
 }

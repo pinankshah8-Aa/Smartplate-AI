@@ -1,112 +1,66 @@
-# 🍽️ SmartPlate AI — PG Mess Food Waste Reduction System
+# SmartPlate AI 🍽️✨
+**Predict. Vote. Save. AI that stops PG food wastage.**
 
-SmartPlate AI is an intelligent, production-ready Next.js 16 web application designed to reduce food wastage in college PG (Paying Guest) and hostel messes. It provides a data-driven bridge between students and mess administration, combining attendance predictive modeling, emergency meal change ticketing, and AI-powered cooking optimization.
+In a college PG where students live together, lunch is packed and sent to college daily assuming full attendance. However, many students skip college, leading to massive food wastage at the college counter. Students staying back in the PG cannot eat others' allocated food, and fixed menus (like repetitive Chicken Biryani) are often disliked, causing even more waste. 
 
----
-
-## 🚀 Key Features
-
-### 👨‍🎓 1. Student Portal
-* **Tomorrow's Attendance**: A quick toggle letting mess staff know if you'll eat tomorrow. Includes a simulated **8:30 AM lock-in feature** with a lock preview.
-* **Today's Menu Feedback**: Rate recipes (thumbs up/down) and add comments to adjust mess cooking parameters (spices, portions).
-* **Emergency Request Ticketing**: Instantly file short-notice cancellations or late check-in dinner requests.
-* **Verifiable QR Meal Pass**: Generates a dynamic QR code client-side that students present at the counter for verified portion distribution.
-
-### 👩‍💼 2. Admin Mess Dashboard
-* **Dynamic Stats Panel**: Tracks total students, active attendance count for tomorrow, and estimated waste saved.
-* **Gemini AI Insights**: Calculates predicted portions, estimated waste (kg), and financial savings, returning actionable meal prep suggestions.
-* **What-If Scenario Simulator**: Simulates operational changes (e.g., swapping white rice with brown rice, or weather shifts) and projects cost and waste impact.
-* **Visual Trend Charts**:
-  - **7-Day Attendance Trend** (Line chart tracking registrations vs actual attendees).
-  - **Cumulative Savings** (Bar chart showing money saved in INR).
-* **Emergency Action Terminal**: Approve or deny pending student meal requests in real-time.
-* **Daily Reminders**: Broadcast reminders to students who haven't marked attendance.
+SmartPlate AI is an intelligent food waste reduction system that solves this by combining attendance intent, menu voting, and Google Gemini AI predictions to cook exactly what is needed.
 
 ---
 
-## 🛠️ Tech Stack
-* **Framework**: Next.js 16 (App Router, static prerendering, serverless API routes)
-* **Language**: TypeScript (Type-safe schemas and interfaces)
-* **Styling**: Tailwind CSS v4 (Glassmorphic cards, deep dark-mode color scheme, custom pulse glowing indicators)
-* **AI Model**: Gemini API (`gemini-1.5-flash` model for high-speed portion predictions and scenario analytics)
-* **Visualizations**: Chart.js & `react-chartjs-2`
-* **QR Generator**: `qrcode` library (rendered client-side)
-* **Icons**: `lucide-react`
+## 🛑 The Core Problem
+- **Blind Cooking:** PG owners cook based on total headcount (e.g., 55 students), not actual college attendance.
+- **Wasted Money & Food:** If 10 students skip college, 10 meals are wasted at ₹50/meal = ₹500 daily loss.
+- **Menu Fatigue:** Fixed menus result in high waste when students dislike the food but have no way to request a change.
 
----
+## 💡 The SmartPlate AI Solution
+1. **Attendance Locking:** Students mark if they are going to college tomorrow. The system auto-locks at 8:30 AM.
+2. **Menu Voting:** Students upvote/downvote the menu, providing real-time sentiment analysis.
+3. **QR Verification:** Students who are "Going" receive a QR code. This prevents duplicate meals and tracks exact consumption.
+4. **Gemini AI Predictive Engine:** The Admin dashboard uses Google Gemini to analyze attendance and sentiment, predicting the exact number of portions to cook and suggesting menu alternatives to minimize waste.
 
-## 📂 Project Structure
+## 🚀 Hackathon Pitch (Key Differentiators)
+- **Immediate ROI:** PG owners can see exact ₹ saved and kg of food waste avoided in real-time.
+- **AI What-If Simulator:** Admins can ask the AI "What if it rains tomorrow?" to instantly adjust portion sizing based on external factors.
+- **Frictionless UX:** Gorgeous dark mode, one-click voting, and instant QR generation.
 
-```bash
-smartplate-ai/
-├── app/
-│   ├── admin/
-│   │   └── page.tsx        # Admin Dashboard (Charts, AI Simulator, Action Table)
-│   ├── api/
-│   │   └── ai/
-│   │       └── route.ts    # Gemini API Handler (Insights & What-If evaluation)
-│   ├── student/
-│   │   └── page.tsx        # Student Dashboard (Attendance, QR generation, Rating)
-│   ├── utils/
-│   │   └── mockData.ts     # Mock database, schemas, and localStorage state sync
-│   ├── globals.css         # Tailwind v4 import, scrollbars, and neon glow themes
-│   ├── layout.tsx          # Root Next.js structure and Metadata
-│   └── page.tsx            # Modern Login page with credentials auto-fill
-├── package.json
-└── tsconfig.json
-```
+## 🛠 Architecture & Tech Stack
+- **Framework:** Next.js 16 (App Router) + TypeScript
+- **Styling:** Tailwind CSS v4 (Deep Dark Theme + #22c55e Accent)
+- **Animations:** Framer Motion
+- **Charts:** Chart.js + `react-chartjs-2`
+- **QR Generation:** `qrcode` library
+- **AI Engine:** Google Gemini (`@google/generative-ai`)
+- **State Management:** LocalStorage (for MVP speed and reliability)
 
----
+### Architecture Diagram Flow
+1. **Student** -> Submits Attendance & Vote (Stored in LocalState) -> Generates QR Code.
+2. **Admin** -> Views Dashboard (Reads LocalState + Mock Data) -> Triggers AI Prediction.
+3. **Gemini API** -> Analyzes (Attendance + Sentiment + What-If Queries) -> Returns JSON.
+4. **Admin Dashboard** -> Displays Optimal Portions, Suggested Menus, and Waste Savings.
 
-## 📐 Architecture Flow
+## ⚙️ How to Run Locally
 
-```mermaid
-graph TD
-    subgraph Student Client
-        A[Student UI] -->|Marks Attendance| B[(Local Storage State)]
-        A -->|Submits Menu Voting| B
-        A -->|Files Emergency Cancel| B
-        A -->|QR Code Loader| C[qrcode Generator]
-    end
+1. **Install Dependencies**
+   ```bash
+   npm install
+   ```
 
-    subgraph Admin Client
-        D[Admin UI] -->|Approve/Deny Emergency| B
-        D -->|Renders savings & attendance| E[Chart.js Line & Bar]
-        D -->|Scenario text input| F[What-If Simulator]
-    end
+2. **Environment Variables**
+   Create a `.env.local` file at the root:
+   ```env
+   # Optional: For AI predictions. If omitted, a deterministic mock fallback is used.
+   GEMINI_API_KEY=your_gemini_api_key
+   ```
 
-    subgraph Serverless Backend
-        F -->|POST /api/ai| G[Gemini API Route]
-        D -->|POST /api/ai - fetchInsights| G
-        G -->|Structured Prompt| H[Gemini 1.5 Flash]
-        H -->|JSON output| G
-        G -->|Hydrate parameters| D
-    end
-```
+3. **Run the Application**
+   ```bash
+   npm run dev
+   ```
 
----
+4. **Access the App**
+   Open [http://localhost:3000](http://localhost:3000)
 
-## ⚙️ Setup Instructions
+## 🔑 Demo Credentials
 
-### 1. Clone the repository and install dependencies:
-```bash
-npm install --legacy-peer-deps
-```
-
-### 2. Set up environment variables:
-Create a `.env.local` file in the root directory and add your Gemini API Key:
-```env
-GEMINI_API_KEY=your_gemini_api_key_here
-```
-> **Note**: If `GEMINI_API_KEY` is not present, the application will automatically enter **Demo Mode** and fallback to high-fidelity simulated AI responses. The app will not crash.
-
-### 3. Run the development server:
-```bash
-npm run dev
-```
-Open [http://localhost:3000](http://localhost:3000) in your browser.
-
-### 4. Demo Login Credentials:
-For reviewer convenience, the login screen includes **quick clickable autofill buttons**:
-* **Student Login**: `student` / `student123`
-* **Admin Login**: `admin` / `admin123`
+- **Student:** `student` / `student123`
+- **Admin:** `admin` / `admin123`

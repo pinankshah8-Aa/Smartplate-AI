@@ -1,505 +1,519 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { motion, AnimatePresence } from 'framer-motion';
+import { LogOut, CheckCircle, XCircle, Clock, ThumbsUp, ThumbsDown, AlertTriangle, Leaf, CalendarCheck, TrendingDown, MessageSquare, Send, CalendarDays, AlertOctagon, Sparkles, Check, Lock, Utensils, ThumbsUpIcon, ThumbsDownIcon } from 'lucide-react';
+import { toast } from 'sonner';
 import QRCode from 'qrcode';
-import { 
-  ChefHat, LogOut, Calendar, Award, QrCode, ThumbsUp, ThumbsDown, 
-  Send, AlertTriangle, CheckCircle, Clock, X, AlertCircle, Sparkles
-} from 'lucide-react';
-import { 
-  getStudentAttendance, saveStudentAttendance, 
-  getMenuRating, saveMenuRating, addEmergencyRequest
-} from '../utils/mockData';
+
+const WEEKLY_MENU = [
+  { day: 'Mon', menu: 'Dal Makhani, Jeera Rice, Paneer Tikka, Roti, Salad' },
+  { day: 'Tue', menu: 'Aloo Gobi, Chana Masala, Plain Rice, Roti, Raita' },
+  { day: 'Wed', menu: 'Palak Paneer, Mix Veg, Pulao, Roti, Papad' },
+  { day: 'Thu', menu: 'Rajma Chawal, Bhindi Masala, Roti, Salad' },
+  { day: 'Fri', menu: 'Kadhai Paneer, Dal Tadka, Jeera Rice, Roti' },
+  { day: 'Sat', menu: 'Pav Bhaji, Veg Biryani, Boondi Raita, Gulab Jamun' },
+  { day: 'Sun', menu: 'Chole Bhature, Sweet Lassi, Salad' },
+];
 
 export default function StudentDashboard() {
   const router = useRouter();
-
-  // Auth Guard
-  useEffect(() => {
-    const role = localStorage.getItem('smartplate_user_role');
-    if (role !== 'student') {
-      router.push('/');
-    }
-  }, [router]);
-
+  const [user, setUser] = useState<any>(null);
+  
   // States
-  const [attending, setAttending] = useState(true);
-  const [isLockedSimulated, setIsLockedSimulated] = useState(false);
-  const [attendanceMarked, setAttendanceMarked] = useState(false);
-  const [markedTime, setMarkedTime] = useState<string | null>(null);
-
-  // Voting state
-  const [liked, setLiked] = useState<'up' | 'down' | null>(null);
+  const [attendance, setAttendance] = useState<'pending'|'going'|'not_going'>('pending');
+  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [collectedFood, setCollectedFood] = useState(false);
+  const [qrSrc, setQrSrc] = useState('');
+  
+  const [showEmergency, setShowEmergency] = useState(false);
+  const [emergencyReason, setEmergencyReason] = useState('');
+  
+  const [rating, setRating] = useState<'up'|'down'|null>(null);
   const [comment, setComment] = useState('');
-  const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
+  
+  const [pollVote, setPollVote] = useState<boolean|null>(null);
+  const [pollStats, setPollStats] = useState({ changeVotes: 0, keepVotes: 0, totalVotes: 0, changePercentage: 0 });
 
-  // QR Code state
-  const [qrUrl, setQrUrl] = useState('');
+  const [activeTab, setActiveTab] = useState('Mon');
+  const [cutoffTime, setCutoffTime] = useState('08:30');
+  const [isTimeLocked, setIsTimeLocked] = useState(false);
 
-  // Emergency request modal state
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [reqType, setReqType] = useState<'Cancel Meals' | 'Late Check-in' | 'Extra Portion'>('Cancel Meals');
-  const [mealType, setMealType] = useState<'Breakfast' | 'Lunch' | 'Dinner'>('Lunch');
-  const [reqDate, setReqDate] = useState('Tomorrow');
-  const [reason, setReason] = useState('');
-  const [emergencySubmitted, setEmergencySubmitted] = useState(false);
+  // Mock Waste Data from DB User object
+  const [wasteRisk, setWasteRisk] = useState({ missedMeals: 0, isHighRisk: false });
 
-  // Initialize values from localStorage
   useEffect(() => {
-    Promise.resolve().then(() => {
-      // Attendance
-      const attState = getStudentAttendance();
-      setAttending(attState.attendingTomorrow);
-      if (attState.markedAt) {
-        setAttendanceMarked(true);
-        setMarkedTime(new Date(attState.markedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
-      }
-
-      // Feedback
-      const ratingState = getMenuRating();
-      if (ratingState) {
-        setLiked(ratingState.rating);
-        setComment(ratingState.comment);
-        setFeedbackSubmitted(true);
-      }
+    const storedUser = localStorage.getItem('smartplate_user');
+    if (!storedUser) {
+      router.push('/');
+      return;
+    }
+    const parsedUser = JSON.parse(storedUser);
+    if (parsedUser.role !== 'student') {
+      router.push('/');
+      return;
+    }
+    setUser(parsedUser);
+    
+    setWasteRisk({
+      missedMeals: parsedUser.missedMeals || 0,
+      isHighRisk: (parsedUser.missedMeals || 0) >= 3
     });
 
-    // QR Code Generation
-    QRCode.toDataURL(JSON.stringify({
-      studentId: 'PG-2026-042',
-      name: 'Rahul Sharma',
-      date: new Date().toISOString().split('T')[0],
-      verified: true
-    }), {
-      color: {
-        dark: '#22c55e', // Vibrant green
-        light: '#0f172a'  // Dark background slate-900
-      },
-      width: 180,
-      margin: 1
-    })
-    .then(url => setQrUrl(url))
-    .catch(err => console.error(err));
-  }, []);
+    loadData(parsedUser.id);
+  }, [router]);
+
+  const formatTimeToAMPM = (time24: string) => {
+    if (!time24) return '';
+    const [hours, minutes] = time24.split(':').map(Number);
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    const hours12 = hours % 12 || 12;
+    return `${hours12}:${String(minutes).padStart(2, '0')} ${ampm}`;
+  };
+
+  const loadData = async (userId: string) => {
+    try {
+      // 1. Fetch cutoff time
+      const resSettings = await fetch('/api/admin/settings');
+      const dataSettings = await resSettings.json();
+      if (dataSettings.success) {
+        setCutoffTime(dataSettings.cutoffTime);
+        checkLock(dataSettings.cutoffTime);
+      }
+
+      // 2. Fetch attendance
+      const resAtt = await fetch(`/api/student/attendance?userId=${userId}`);
+      const dataAtt = await resAtt.json();
+      if (dataAtt.success) {
+        setAttendance(dataAtt.attendance);
+        setIsSubmitted(dataAtt.isSubmitted || false);
+        setCollectedFood(dataAtt.collectedFood || false);
+        if (dataAtt.attendance === 'going' && dataAtt.isSubmitted) generateQR();
+      }
+      // 3. Fetch Poll Stats
+      const resPoll = await fetch('/api/student/poll/stats');
+      const dataPoll = await resPoll.json();
+      if (dataPoll.success) {
+        setPollStats(dataPoll.stats);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const checkLock = (cutoff: string) => {
+    const [cutoffHours, cutoffMinutes] = cutoff.split(':').map(Number);
+    const now = new Date();
+    const utcOffset = now.getTimezoneOffset() * 60000;
+    const istOffset = 5.5 * 60 * 60000; 
+    const istDate = new Date(now.getTime() + utcOffset + istOffset);
+
+    const currentHours = istDate.getHours();
+    const currentMinutes = istDate.getMinutes();
+
+    if (currentHours > cutoffHours || (currentHours === cutoffHours && currentMinutes >= cutoffMinutes)) {
+      setIsTimeLocked(true);
+    } else {
+      setIsTimeLocked(false);
+    }
+  };
+
+  const isLocked = isTimeLocked || isSubmitted;
+
+  const generateQR = async () => {
+    try {
+      const url = await QRCode.toDataURL(user.id, {
+        color: { dark: '#22c55e', light: '#ffffff' },
+        margin: 2
+      });
+      setQrSrc(url);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const selectAttendance = (status: 'going'|'not_going') => {
+    if (isLocked) return;
+    setAttendance(status);
+  };
+
+  const submitAttendance = async () => {
+    if (attendance === 'pending') {
+      return toast.error("Please select Going or Not Going first!");
+    }
+    try {
+      const res = await fetch('/api/student/attendance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.id, status: attendance, isSubmitted: true })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setIsSubmitted(true);
+        toast.success(`Submitted Successfully!`);
+        if (attendance === 'going') generateQR();
+        else setQrSrc('');
+      }
+    } catch (e) {
+      toast.error("Failed to submit attendance");
+    }
+  };
+
+  const submitFeedback = async () => {
+    if (!rating) return toast.error("Please select Like or Dislike");
+    try {
+      await fetch('/api/student/rating', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.id, menu: 'Paneer Butter Masala', rating, comment })
+      });
+      toast.success("Feedback submitted!");
+      setRating(null);
+      setComment('');
+    } catch (e) {
+      toast.error("Failed to submit rating");
+    }
+  };
+
+  const submitPoll = async (voteToChange: boolean) => {
+    try {
+      await fetch('/api/student/poll', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.id, menu: 'Paneer Butter Masala', voteToChange: voteToChange })
+      });
+      setPollVote(voteToChange);
+      toast.success("Vote recorded successfully!");
+      
+      // Refetch stats
+      const resPoll = await fetch('/api/student/poll/stats');
+      const dataPoll = await resPoll.json();
+      if (dataPoll.success) setPollStats(dataPoll.stats);
+    } catch (e) {
+      toast.error("Failed to cast vote");
+    }
+  };
+
+  const submitEmergency = async () => {
+    if (!emergencyReason) return toast.error("Please enter a reason");
+    try {
+      await fetch('/api/student/emergency', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.id, reason: emergencyReason })
+      });
+      toast.success("Request sent to Admin");
+      setShowEmergency(false);
+      setEmergencyReason('');
+    } catch (e) {
+      toast.error("Failed to submit request");
+    }
+  };
 
   const handleLogout = () => {
-    localStorage.removeItem('smartplate_user_role');
-    localStorage.removeItem('smartplate_username');
+    localStorage.clear();
     router.push('/');
   };
 
-  const handleAttendanceSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (isLockedSimulated) return;
-    saveStudentAttendance(attending);
-    setAttendanceMarked(true);
-    setMarkedTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
-  };
-
-  const handleFeedbackSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!liked) return;
-    saveMenuRating(liked, comment);
-    setFeedbackSubmitted(true);
-  };
-
-  const handleEmergencySubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    addEmergencyRequest({
-      studentName: 'Rahul Sharma',
-      studentId: 'PG-2026-042',
-      type: reqType,
-      mealType: mealType,
-      date: reqDate,
-      reason: reason,
-    });
-    setEmergencySubmitted(true);
-    setTimeout(() => {
-      setIsModalOpen(false);
-      setEmergencySubmitted(false);
-      setReason('');
-    }, 1500);
-  };
+  if (!user) return <div className="min-h-screen bg-background" />;
 
   return (
-    <div className="min-h-screen bg-[#090d16] pb-12">
-      {/* Header */}
-      <header className="sticky top-0 z-40 bg-slate-900/80 backdrop-blur-md border-b border-slate-800 px-4 sm:px-6 lg:px-8 py-4">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-slate-950 border border-slate-800 rounded-xl">
-              <ChefHat className="h-6 w-6 text-[#22c55e]" />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold text-white tracking-wide">SmartPlate AI</h1>
-              <p className="text-[10px] text-slate-500 font-semibold tracking-wider uppercase">Student Panel</p>
-            </div>
+    <div className="min-h-screen bg-background text-foreground pb-20">
+      <header className="bg-card border-b border-border px-6 py-4 sticky top-0 z-40">
+        <div className="max-w-5xl mx-auto flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-black text-white">SmartPlate AI</h1>
+            <p className="text-xs text-primary font-bold">Hello, {user.name}</p>
           </div>
-
-          <div className="flex items-center gap-4">
-            <div className="hidden sm:flex flex-col items-end">
-              <span className="text-sm font-semibold text-white">Rahul Sharma</span>
-              <span className="text-xs text-slate-400">Room B-204 | PG-2026-042</span>
-            </div>
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-red-400 hover:text-white bg-slate-950 border border-slate-800 hover:border-red-500/50 hover:bg-red-950/20 rounded-lg transition duration-200"
-            >
-              <LogOut className="h-3.5 w-3.5" />
-              <span>Logout</span>
-            </button>
-          </div>
+          <button onClick={handleLogout} className="p-2 text-muted hover:text-white transition">
+            <LogOut className="h-5 w-5" />
+          </button>
         </div>
       </header>
 
-      {/* Main Container */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8 space-y-6">
+      <main className="max-w-5xl mx-auto px-4 mt-8 space-y-6">
         
-        {/* Banner Alert for hackathon simulation */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 bg-slate-900 border border-slate-800 rounded-2xl">
-          <div className="flex items-center gap-3">
-            <span className="p-2 bg-amber-950/40 border border-amber-800/40 rounded-xl text-amber-400">
-              <Clock className="h-5 w-5" />
-            </span>
+        {wasteRisk.isHighRisk && !collectedFood && attendance === 'going' && (
+          <motion.div initial={{opacity:0, y:-10}} animate={{opacity:1,y:0}} className="bg-danger/10 border border-danger p-4 rounded-2xl flex items-start gap-3 shadow-[0_0_15px_-3px_rgba(239,68,68,0.2)]">
+            <AlertOctagon className="h-6 w-6 text-danger shrink-0 mt-0.5" />
             <div>
-              <p className="text-sm font-semibold text-white">Attendance Lock-In Simulation</p>
-              <p className="text-xs text-slate-400">Mess attendance auto-locks at 8:30 AM daily for food preparation planning.</p>
+              <h3 className="text-danger font-bold text-sm">Food Waste Warning</h3>
+              <p className="text-danger/80 text-xs mt-1">You failed to collect lunch for <strong>{wasteRisk.missedMeals} days</strong>. Please ensure you collect your meal today.</p>
             </div>
+          </motion.div>
+        )}
+
+        {/* Personal Impact */}
+        <div className="grid grid-cols-3 gap-4">
+          <div className="bg-card border border-border p-4 rounded-2xl flex flex-col items-center text-center shadow-lg">
+            <Leaf className="h-6 w-6 text-primary mb-2" />
+            <span className="text-2xl font-black text-white">450</span>
+            <span className="text-[10px] text-muted uppercase font-bold tracking-wider mt-1">Eco Points</span>
           </div>
-          <button
-            onClick={() => setIsLockedSimulated(!isLockedSimulated)}
-            className={`px-4 py-2 text-xs font-bold rounded-xl border transition-all duration-300 ${
-              isLockedSimulated 
-                ? 'bg-amber-950/40 border-amber-500 text-amber-400 shadow-lg shadow-amber-500/10' 
-                : 'bg-slate-950 border-slate-800 text-slate-300 hover:border-[#22c55e]'
-            }`}
-          >
-            {isLockedSimulated ? '🔒 Locked (Simulating Past 8:30 AM)' : '🔓 Open (Simulating Before 8:30 AM)'}
-          </button>
+          <div className="bg-card border border-border p-4 rounded-2xl flex flex-col items-center text-center shadow-lg">
+            <CalendarCheck className="h-6 w-6 text-info mb-2" />
+            <span className="text-2xl font-black text-white">18</span>
+            <span className="text-[10px] text-muted uppercase font-bold tracking-wider mt-1">Meals Eaten</span>
+          </div>
+          <div className="bg-card border border-border p-4 rounded-2xl flex flex-col items-center text-center shadow-lg">
+            <TrendingDown className="h-6 w-6 text-warning mb-2" />
+            <span className="text-2xl font-black text-white">2.5kg</span>
+            <span className="text-[10px] text-muted uppercase font-bold tracking-wider mt-1">Waste Avoided</span>
+          </div>
         </div>
 
-        {/* Dashboard Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          
-          {/* COLUMN 1: Attendance Marking & QR Pass */}
-          <div className="space-y-6">
-            
-            {/* Attendance Marking Card */}
-            <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 relative overflow-hidden transition-all duration-300 hover:border-slate-700">
-              <div className="absolute top-0 right-0 p-4">
-                <Calendar className="h-5 w-5 text-slate-500" />
-              </div>
-              <h2 className="text-lg font-bold text-white mb-2">Tomorrow&apos;s Attendance</h2>
-              <p className="text-xs text-slate-400 mb-6">Let the mess staff know if you&apos;ll eat tomorrow to optimize raw food quantities.</p>
-
-              <form onSubmit={handleAttendanceSubmit} className="space-y-6">
-                <div className="flex items-center justify-between p-4 bg-slate-950 border border-slate-800 rounded-2xl">
-                  <div>
-                    <span className="text-sm font-semibold block text-white">Mess Meals Tomorrow</span>
-                    <span className="text-[10px] text-slate-500">Includes Breakfast, Lunch & Dinner</span>
-                  </div>
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input 
-                      type="checkbox" 
-                      className="sr-only peer" 
-                      checked={attending}
-                      disabled={isLockedSimulated}
-                      onChange={(e) => setAttending(e.target.checked)}
-                    />
-                    <div className="w-14 h-7 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-slate-400 after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#22c55e] peer-checked:after:bg-slate-950 peer-checked:after:border-transparent"></div>
-                  </label>
-                </div>
-
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-slate-400">Current Status:</span>
-                  <span className={`font-bold px-2 py-0.5 rounded-full ${
-                    attending 
-                      ? 'bg-emerald-950/40 border border-emerald-800/40 text-[#22c55e]' 
-                      : 'bg-red-950/40 border border-red-800/40 text-red-400'
-                  }`}>
-                    {attending ? '✅ Attending' : '❌ Opted Out'}
-                  </span>
-                </div>
-
-                {isLockedSimulated ? (
-                  <div className="flex items-center gap-2 p-3 bg-red-950/20 border border-red-900/30 rounded-xl text-red-400 text-xs">
-                    <AlertCircle className="h-4 w-4 shrink-0" />
-                    <span>Attendance is locked. You cannot modify your status for tomorrow.</span>
-                  </div>
-                ) : (
-                  <button
-                    type="submit"
-                    className="w-full py-3 px-4 rounded-xl text-xs font-semibold bg-[#22c55e] text-slate-950 hover:bg-[#16a34a] transition duration-200"
-                  >
-                    Submit Attendance Choice
-                  </button>
-                )}
-              </form>
-
-              {attendanceMarked && (
-                <div className="mt-4 flex items-center gap-2 text-xs text-[#22c55e] bg-emerald-950/10 p-3 border border-emerald-900/30 rounded-xl">
-                  <CheckCircle className="h-4 w-4" />
-                  <span>Marked successfully at {markedTime || 'recently'}</span>
-                </div>
-              )}
+        {/* Attendance Card */}
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-card border border-border rounded-3xl p-8 relative overflow-hidden shadow-xl">
+          <div className="absolute top-0 right-0 p-4">
+            <div className={`flex items-center gap-2 border px-3 py-1.5 rounded-full ${isLocked ? 'bg-danger/10 border-danger/30' : 'bg-background border-border'}`}>
+              <Clock className={`h-4 w-4 ${isLocked ? 'text-danger' : 'text-warning'}`} />
+              <span className={`text-xs font-bold ${isLocked ? 'text-danger' : 'text-muted'}`}>
+                {isTimeLocked ? `Locked at ${formatTimeToAMPM(cutoffTime)}` : `Auto-locks at ${formatTimeToAMPM(cutoffTime)}`}
+              </span>
             </div>
-
-            {/* QR Pass Card */}
-            <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 flex flex-col items-center justify-center transition-all duration-300 hover:border-slate-700">
-              <div className="w-full flex items-center justify-between mb-4">
-                <h2 className="text-lg font-bold text-white">Lunch Pass QR</h2>
-                <QrCode className="h-5 w-5 text-slate-500" />
-              </div>
-              <p className="text-xs text-slate-400 text-center mb-6">Scan this QR code at the mess counter to verify your lunch attendance and portion size.</p>
-              
-              <div className="p-3 bg-slate-950 border border-slate-800 rounded-2xl pulse-glow-border relative flex items-center justify-center">
-                {qrUrl ? (
-                  <img src={qrUrl} alt="Lunch Verification QR" className="w-[160px] h-[160px]" />
-                ) : (
-                  <div className="w-[160px] h-[160px] flex items-center justify-center text-xs text-slate-500">Generating QR...</div>
-                )}
-              </div>
-
-              <div className="mt-5 text-center space-y-1">
-                <p className="text-xs font-bold text-[#22c55e]">Status: Active Today</p>
-                <p className="text-[10px] text-slate-500">Meal: Lunch | Verified: No</p>
-              </div>
-            </div>
-
           </div>
 
-          {/* COLUMN 2: Today's Menu Rating & Emergency Requests */}
-          <div className="space-y-6">
-            
-            {/* Today's Menu Rating Card */}
-            <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 transition-all duration-300 hover:border-slate-700">
-              <h2 className="text-lg font-bold text-white mb-2">Today&apos;s Menu Feedback</h2>
-              <p className="text-xs text-slate-400 mb-6">Rate today&apos;s recipe. Mess staff will adapt spice and quantities based on ratings.</p>
+          <h2 className="text-2xl font-black text-white mb-2 mt-4">Going to college tomorrow?</h2>
+          <p className="text-muted text-sm mb-8">Help us predict exact food quantities and avoid wastage.</p>
 
-              <div className="p-4 bg-slate-950 border border-slate-800 rounded-2xl mb-6">
-                <span className="text-[10px] text-[#22c55e] font-bold uppercase tracking-wider">Today&apos;s Special Meal</span>
-                <p className="text-base font-bold text-white">Chicken Biryani / Paneer Biryani</p>
-                <p className="text-xs text-slate-500 mt-1">Served at: 12:30 PM - 2:30 PM</p>
+          <div className="grid grid-cols-2 gap-4">
+            <button 
+              onClick={() => selectAttendance('going')}
+              disabled={isLocked}
+              className={`p-6 rounded-2xl border-2 flex flex-col items-center gap-4 transition 
+                ${attendance === 'going' ? 'border-primary bg-primary/10 shadow-[0_0_30px_-5px_rgba(34,197,94,0.3)]' : 'border-border bg-background'}
+                ${isLocked && attendance !== 'going' ? 'opacity-50 cursor-not-allowed' : 'hover:border-primary/50'}
+              `}
+            >
+              <div className={`p-4 rounded-full ${attendance === 'going' ? 'bg-primary text-white' : 'bg-card border border-border text-muted'}`}>
+                <CheckCircle className="h-8 w-8" />
               </div>
+              <span className={`font-black text-lg ${attendance === 'going' ? 'text-primary' : 'text-white'}`}>Yes, Going</span>
+            </button>
+            
+            <button 
+              onClick={() => selectAttendance('not_going')}
+              disabled={isLocked}
+              className={`p-6 rounded-2xl border-2 flex flex-col items-center gap-4 transition 
+                ${attendance === 'not_going' ? 'border-danger bg-danger/10 shadow-[0_0_30px_-5px_rgba(239,68,68,0.2)]' : 'border-border bg-background'}
+                ${isLocked && attendance !== 'not_going' ? 'opacity-50 cursor-not-allowed' : 'hover:border-danger/50'}
+              `}
+            >
+              <div className={`p-4 rounded-full ${attendance === 'not_going' ? 'bg-danger text-white' : 'bg-card border border-border text-muted'}`}>
+                <XCircle className="h-8 w-8" />
+              </div>
+              <span className={`font-black text-lg ${attendance === 'not_going' ? 'text-danger' : 'text-white'}`}>Not Going</span>
+            </button>
+          </div>
 
-              <form onSubmit={handleFeedbackSubmit} className="space-y-4">
-                <div className="flex gap-4">
-                  <button
-                    type="button"
-                    disabled={feedbackSubmitted}
-                    onClick={() => setLiked('up')}
-                    className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border text-sm font-semibold transition-all duration-200 ${
-                      liked === 'up' 
-                        ? 'bg-emerald-950/40 border-[#22c55e] text-[#22c55e]' 
-                        : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    <ThumbsUp className="h-4 w-4" />
-                    Good
-                  </button>
-                  <button
-                    type="button"
-                    disabled={feedbackSubmitted}
-                    onClick={() => setLiked('down')}
-                    className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border text-sm font-semibold transition-all duration-200 ${
-                      liked === 'down' 
-                        ? 'bg-red-950/40 border-red-500 text-red-400' 
-                        : 'bg-slate-950 border-slate-800 text-slate-400 hover:text-white'
-                    }`}
-                  >
-                    <ThumbsDown className="h-4 w-4" />
-                    Average/Bad
-                  </button>
+          <AnimatePresence>
+            {!isSubmitted && attendance !== 'pending' && (
+              <motion.div initial={{ opacity:0, y:-10 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0, y:-10 }} className="mt-6">
+                <button onClick={submitAttendance} className="w-full py-4 bg-primary text-white font-black rounded-xl text-lg flex items-center justify-center gap-2 hover:bg-primary-dark transition shadow-lg shadow-primary/30">
+                  <Check className="h-6 w-6" /> Submit Attendance
+                </button>
+              </motion.div>
+            )}
+            {isSubmitted && (
+              <motion.div initial={{ opacity:0 }} animate={{ opacity:1 }} className="mt-6 flex justify-center">
+                <div className="flex items-center gap-2 px-6 py-3 bg-primary/10 border border-primary/20 rounded-full">
+                  <Lock className="h-4 w-4 text-primary" />
+                  <span className="text-primary font-bold text-sm">Submitted Successfully</span>
                 </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
-                <textarea
-                  value={comment}
-                  disabled={feedbackSubmitted}
-                  onChange={(e) => setComment(e.target.value)}
-                  placeholder="Share feedback on portion size, spices, or cooking..."
-                  className="w-full p-3 h-24 bg-slate-950 border border-slate-800 rounded-xl text-slate-300 placeholder-slate-600 focus:outline-none focus:border-[#22c55e] text-xs resize-none"
-                />
+          <AnimatePresence>
+            {isSubmitted && attendance === 'going' && qrSrc && (
+               <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="mt-8 pt-8 border-t border-border flex flex-col items-center overflow-hidden">
+                 <p className="text-sm font-bold text-muted uppercase tracking-wider mb-4">Your Lunch Verification QR</p>
+                 <div className="bg-white p-2 rounded-xl shadow-2xl">
+                   <img src={qrSrc} alt="Lunch QR" className="w-48 h-48" />
+                 </div>
+                 
+                 {!collectedFood ? (
+                   <div className="mt-6 flex items-center gap-2 text-warning font-bold">
+                     <Clock className="h-5 w-5" /> Waiting for QR Scan
+                   </div>
+                 ) : (
+                   <div className="mt-6 flex items-center gap-2 text-primary font-bold">
+                     <CheckCircle className="h-5 w-5" /> Food Collected
+                   </div>
+                 )}
+               </motion.div>
+            )}
+          </AnimatePresence>
+        </motion.div>
 
-                {!feedbackSubmitted ? (
-                  <button
-                    type="submit"
-                    disabled={!liked}
-                    className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-xs font-semibold bg-[#22c55e] text-slate-950 hover:bg-[#16a34a] disabled:opacity-50 disabled:cursor-not-allowed transition duration-200"
-                  >
-                    <Send className="h-3.5 w-3.5" />
-                    Submit Review
-                  </button>
-                ) : (
-                  <div className="flex items-center gap-2 p-3 bg-emerald-950/20 border border-emerald-900/30 rounded-xl text-[#22c55e] text-xs">
-                    <CheckCircle className="h-4.5 w-4.5" />
-                    <span>Feedback saved! AI will parse reviews for sentiment score.</span>
-                  </div>
-                )}
-              </form>
+        {/* Full Weekly Vegetarian Menu */}
+        <div className="bg-card border border-border rounded-3xl p-6 shadow-xl">
+           <h3 className="text-sm font-bold text-muted uppercase tracking-wider mb-4 flex items-center gap-2">
+             <CalendarDays className="h-4 w-4" /> Full Weekly Vegetarian Menu
+           </h3>
+           <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide mb-4">
+             {WEEKLY_MENU.map((item) => (
+               <button 
+                 key={item.day}
+                 onClick={() => setActiveTab(item.day)}
+                 className={`px-4 py-2 rounded-xl text-sm font-bold shrink-0 transition ${activeTab === item.day ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'bg-background border border-border text-muted hover:text-white'}`}
+               >
+                 {item.day}
+               </button>
+             ))}
+           </div>
+           <div className="bg-background border border-border rounded-2xl p-6 min-h-[100px] flex items-center shadow-inner">
+             <p className="text-lg text-white font-medium">
+               {WEEKLY_MENU.find(m => m.day === activeTab)?.menu}
+             </p>
+           </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Majority Polling Card */}
+          <div className="bg-primary/5 border border-primary/20 rounded-3xl p-6 shadow-xl flex flex-col">
+            <h3 className="text-sm font-bold text-primary uppercase tracking-wider mb-2 flex items-center gap-2"><MessageSquare className="h-4 w-4" /> Majority Polling</h3>
+            <p className="text-xs text-muted mb-4">Vote to change today's main course. If majority dislikes it, admin will be alerted.</p>
+            
+            {pollStats.changePercentage > 50 && pollStats.totalVotes > 2 && (
+              <motion.div initial={{opacity:0}} animate={{opacity:1}} className="bg-warning/20 border border-warning/40 px-3 py-2 rounded-xl flex items-center gap-2 mb-4 shadow-[0_0_10px_-3px_rgba(234,179,8,0.3)]">
+                <AlertTriangle className="h-4 w-4 text-warning" />
+                <span className="text-warning text-xs font-bold">Majority wants change!</span>
+              </motion.div>
+            )}
+
+            <div className="bg-card border border-border rounded-2xl p-5 shadow-inner mb-6 flex-1">
+              <h4 className="text-xl font-black text-white text-center mb-1">Paneer Butter Masala</h4>
+              <p className="text-xs text-center text-muted mb-4">Do you want to change this menu item?</p>
+              
+              {/* Progress Bar */}
+              <div className="mb-2">
+                <div className="flex justify-between text-[10px] font-bold uppercase tracking-wider mb-1">
+                  <span className="text-warning">Change It ({pollStats.changePercentage}%)</span>
+                  <span className="text-primary">Keep It ({100 - pollStats.changePercentage}%)</span>
+                </div>
+                <div className="w-full bg-primary/20 rounded-full h-1.5 flex overflow-hidden">
+                  <div 
+                    style={{ width: `${pollStats.changePercentage}%` }} 
+                    className="bg-warning h-full transition-all duration-500"
+                  />
+                </div>
+              </div>
             </div>
-
-            {/* Emergency Request Card */}
-            <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 transition-all duration-300 hover:border-slate-700">
-              <h2 className="text-lg font-bold text-white mb-2">Emergency Change</h2>
-              <p className="text-xs text-slate-400 mb-6">Need to cancel a meal at short notice or check in late? Log a request for admin approval.</p>
-
-              <button
-                onClick={() => setIsModalOpen(true)}
-                className="w-full flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-xs font-semibold bg-slate-950 border border-slate-800 hover:border-red-500/40 text-slate-300 hover:text-white transition duration-200"
+            
+            <div className="flex gap-3">
+              <button 
+                onClick={() => submitPoll(true)}
+                disabled={pollVote !== null}
+                className={`flex-1 py-3 rounded-xl border flex justify-center items-center gap-2 font-bold transition text-sm ${pollVote === true ? 'bg-warning/20 border-warning text-warning shadow-[0_0_15px_-3px_rgba(234,179,8,0.3)]' : 'bg-background border-border text-muted hover:border-warning hover:text-warning'} ${pollVote !== null && pollVote !== true ? 'opacity-50' : ''}`}
               >
-                <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
-                Submit Emergency Request
+                Yes, Change it
+              </button>
+              <button 
+                onClick={() => submitPoll(false)}
+                disabled={pollVote !== null}
+                className={`flex-1 py-3 rounded-xl border flex justify-center items-center gap-2 font-bold transition text-sm ${pollVote === false ? 'bg-primary/20 border-primary text-primary shadow-[0_0_15px_-3px_rgba(34,197,94,0.3)]' : 'bg-background border-border text-muted hover:border-primary hover:text-primary'} ${pollVote !== null && pollVote !== false ? 'opacity-50' : ''}`}
+              >
+                No, Keep it
               </button>
             </div>
-
           </div>
 
-          {/* COLUMN 3: Preview & Mess Insights */}
-          <div className="space-y-6">
+          {/* Redesigned Rating UI */}
+          <div className="bg-card border border-border rounded-3xl p-6 shadow-xl flex flex-col">
+            <h3 className="text-sm font-bold text-muted uppercase tracking-wider mb-4 border-b border-border pb-2">Rate Today's Menu</h3>
             
-            {/* Tomorrow's Menu Preview */}
-            <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 transition-all duration-300 hover:border-slate-700">
-              <h2 className="text-lg font-bold text-white mb-2">Tomorrow&apos;s Preview</h2>
-              <p className="text-xs text-slate-400 mb-4">A sneak peek of tomorrow&apos;s meals.</p>
-
-              <div className="space-y-4">
-                <div className="p-4 bg-slate-950 border border-slate-800 rounded-2xl">
-                  <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Scheduled Dish</span>
-                  <p className="text-sm font-bold text-white">Chole Bhature & Sweet Lassi</p>
-                  <p className="text-[10px] text-slate-400 mt-1">Calorie estimate: ~680 kcal</p>
-                </div>
-
-                <div className="p-4 bg-slate-950 border border-slate-800 rounded-2xl space-y-2.5">
-                  <div className="flex items-center gap-1.5 text-xs text-[#22c55e] font-semibold">
-                    <Sparkles className="h-4 w-4" />
-                    <span>SmartPlate AI Insights</span>
-                  </div>
-                  <p className="text-xs text-slate-400 leading-relaxed">
-                    Based on historical Saturday attendance data (average 32/55 students), the AI recommends preparing 35 portions of Chole Bhature to minimize waste.
-                  </p>
-                </div>
-              </div>
+            <div className="flex gap-3 mb-4">
+              <button onClick={() => setRating('up')} className={`flex-1 py-4 rounded-xl border-2 flex justify-center items-center gap-2 font-bold transition ${rating === 'up' ? 'bg-primary/20 border-primary text-primary shadow-[0_0_20px_-5px_rgba(34,197,94,0.3)]' : 'bg-background border-border text-muted hover:border-primary/50'}`}>
+                <ThumbsUp className="h-6 w-6" /> Loved it
+              </button>
+              <button onClick={() => setRating('down')} className={`flex-1 py-4 rounded-xl border-2 flex justify-center items-center gap-2 font-bold transition ${rating === 'down' ? 'bg-danger/20 border-danger text-danger shadow-[0_0_20px_-5px_rgba(239,68,68,0.2)]' : 'bg-background border-border text-muted hover:border-danger/50'}`}>
+                <ThumbsDown className="h-6 w-6" /> Disliked it
+              </button>
             </div>
-
-            {/* Impact Tracking Card */}
-            <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 transition-all duration-300 hover:border-slate-700 relative overflow-hidden">
-              <div className="absolute top-[-30%] right-[-10%] w-40 h-40 bg-[#22c55e]/5 rounded-full filter blur-2xl pointer-events-none" />
-              
-              <h2 className="text-lg font-bold text-white mb-2">Your Impact</h2>
-              <p className="text-xs text-slate-400 mb-6">Your personal savings statistics this month.</p>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="p-3.5 bg-slate-950 border border-slate-800/80 rounded-2xl text-center">
-                  <span className="text-2xl font-black text-[#22c55e] block">24 / 28</span>
-                  <span className="text-[10px] text-slate-500 font-bold uppercase">Meals Checked In</span>
-                </div>
-                <div className="p-3.5 bg-slate-950 border border-slate-800/80 rounded-2xl text-center">
-                  <span className="text-2xl font-black text-[#22c55e] block">2.8 kg</span>
-                  <span className="text-[10px] text-slate-500 font-bold uppercase">Food Waste Saved</span>
-                </div>
-              </div>
-
-              <div className="mt-4 p-3 bg-slate-950/40 border border-slate-850 rounded-2xl flex items-center gap-3">
-                <Award className="h-8 w-8 text-[#22c55e] shrink-0" />
-                <div>
-                  <p className="text-xs font-bold text-white">Green Plate Badge Level 2</p>
-                  <p className="text-[10px] text-slate-500">You are in the top 15% of mess savers!</p>
-                </div>
-              </div>
+            
+            <div className="relative mb-4">
+              <MessageSquare className="absolute left-3 top-3 h-5 w-5 text-muted" />
+              <textarea 
+                value={comment}
+                onChange={(e) => setComment(e.target.value)}
+                placeholder="Any suggestions? (e.g. Too spicy, need more paneer)" 
+                className="w-full bg-background border border-border rounded-xl pl-10 pr-4 py-3 text-sm text-white focus:outline-none focus:border-primary min-h-[80px]"
+              />
             </div>
-
+            
+            <button onClick={submitFeedback} className="w-full py-3 bg-white text-background font-black rounded-xl text-sm flex items-center justify-center gap-2 hover:bg-slate-200 transition mt-auto shadow-lg">
+              Submit Feedback <Send className="h-4 w-4" />
+            </button>
           </div>
+        </div>
 
+        {/* Tomorrow's AI Menu */}
+        <div className="bg-gradient-to-br from-card to-background border border-primary/30 rounded-3xl p-6 relative overflow-hidden shadow-xl flex flex-col md:flex-row items-center gap-8">
+           <div className="absolute top-0 right-0 w-64 h-64 bg-primary/10 rounded-full blur-[60px]" />
+           
+           <div className="flex-1 relative z-10 w-full">
+             <div className="flex items-center gap-2 mb-4 border-b border-border pb-4">
+               <div className="p-1.5 bg-primary rounded-lg shadow-lg shadow-primary/30"><Sparkles className="h-4 w-4 text-white" /></div>
+               <h3 className="text-sm font-bold text-white uppercase tracking-wider">AI Predicted Menu</h3>
+               <span className="ml-auto px-2 py-1 bg-card border border-border rounded text-[10px] text-muted font-bold">Tomorrow</span>
+             </div>
+             
+             <h4 className="text-3xl font-black text-white mb-1 leading-tight">Palak Paneer & Mix Veg</h4>
+             <p className="text-sm text-primary font-medium mb-4">Replacing standard Aloo Matar</p>
+             
+             <div className="bg-background/80 backdrop-blur border border-border rounded-xl p-4 shadow-inner">
+               <div className="flex justify-between items-center mb-2">
+                 <span className="text-[10px] text-muted uppercase font-bold tracking-wider">AI Confidence</span>
+                 <span className="text-xs font-black text-primary">92%</span>
+               </div>
+               <div className="w-full bg-card rounded-full h-1.5 mb-3">
+                 <div className="bg-primary h-1.5 rounded-full w-[92%] shadow-[0_0_10px_0_rgba(34,197,94,0.5)]"></div>
+               </div>
+               <p className="text-xs text-muted leading-relaxed">
+                 <strong>Reasoning:</strong> High student preference for Palak Paneer during mid-week. AI detected 30% lower attendance on Aloo Matar days historically.
+               </p>
+             </div>
+           </div>
+           
+           <div className="w-full md:w-auto relative z-10">
+             <button onClick={() => setShowEmergency(true)} className="w-full md:w-auto py-4 px-6 bg-background border border-border rounded-xl text-sm font-bold text-warning flex items-center justify-center gap-2 hover:bg-card transition shadow-sm">
+               <AlertTriangle className="h-5 w-5" /> Request Emergency Change
+             </button>
+           </div>
         </div>
 
       </main>
 
-      {/* Emergency Request Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-fade-in">
-          <div className="bg-slate-900 border border-slate-800 w-full max-w-md rounded-3xl p-6 shadow-2xl relative">
-            <button
-              onClick={() => setIsModalOpen(false)}
-              className="absolute top-4 right-4 p-1 rounded-lg text-slate-500 hover:text-white bg-slate-950 border border-slate-800 hover:border-slate-700 transition"
-            >
-              <X className="h-4 w-4" />
-            </button>
-
-            <h3 className="text-lg font-bold text-white mb-1">New Emergency Request</h3>
-            <p className="text-xs text-slate-400 mb-6">File a short notice change. The Mess Admin will process this request shortly.</p>
-
-            {emergencySubmitted ? (
-              <div className="py-8 flex flex-col items-center justify-center space-y-3">
-                <div className="p-3 bg-emerald-950/40 border border-emerald-500 rounded-full text-[#22c55e]">
-                  <CheckCircle className="h-8 w-8 animate-bounce" />
-                </div>
-                <p className="text-sm font-bold text-white">Request Submitted Successfully</p>
-                <p className="text-xs text-slate-400">Syncing with Admin database...</p>
+      {/* Emergency Modal */}
+      <AnimatePresence>
+        {showEmergency && (
+          <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
+            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="bg-card border border-border p-6 rounded-3xl w-full max-w-md shadow-2xl">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-xl font-bold text-white">Emergency Request</h2>
+                <button onClick={() => setShowEmergency(false)} className="p-1 text-muted hover:text-white rounded-full"><XCircle className="h-6 w-6" /></button>
               </div>
-            ) : (
-              <form onSubmit={handleEmergencySubmit} className="space-y-4">
-                <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Request Type</label>
-                  <select
-                    value={reqType}
-                    onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setReqType(e.target.value as 'Cancel Meals' | 'Late Check-in' | 'Extra Portion')}
-                    className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:border-[#22c55e]"
-                  >
-                    <option value="Cancel Meals">Cancel Meals (Opt-out)</option>
-                    <option value="Late Check-in">Late Check-in (Keep portion warm)</option>
-                    <option value="Extra Portion">Extra Portion Request</option>
-                  </select>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Meal Type</label>
-                    <select
-                      value={mealType}
-                      onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setMealType(e.target.value as 'Breakfast' | 'Lunch' | 'Dinner')}
-                      className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:border-[#22c55e]"
-                    >
-                      <option value="Breakfast">Breakfast</option>
-                      <option value="Lunch">Lunch</option>
-                      <option value="Dinner">Dinner</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Date</label>
-                    <select
-                      value={reqDate}
-                      onChange={(e) => setReqDate(e.target.value)}
-                      className="w-full p-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:border-[#22c55e]"
-                    >
-                      <option value="Today">Today</option>
-                      <option value="Tomorrow">Tomorrow</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1.5">Reason</label>
-                  <textarea
-                    required
-                    value={reason}
-                    onChange={(e) => setReason(e.target.value)}
-                    placeholder="Provide a valid explanation (e.g. traveling, classes delayed)..."
-                    className="w-full p-3 h-20 bg-slate-950 border border-slate-800 rounded-xl text-xs text-slate-300 placeholder-slate-600 focus:outline-none focus:border-[#22c55e] resize-none"
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  className="w-full py-3 px-4 rounded-xl text-xs font-semibold bg-[#22c55e] text-slate-950 hover:bg-[#16a34a] transition duration-200"
-                >
-                  Submit Emergency Request
-                </button>
-              </form>
-            )}
+              <p className="text-sm text-muted mb-6">Need to change your attendance after the cutoff time? This requires Admin approval.</p>
+              <textarea 
+                value={emergencyReason}
+                onChange={(e) => setEmergencyReason(e.target.value)}
+                className="w-full bg-background border border-border rounded-xl p-4 text-sm text-white focus:outline-none focus:border-warning mb-6" 
+                placeholder="Reason for change... (e.g. Going home due to family emergency)" 
+                rows={4}
+              ></textarea>
+              <button 
+                onClick={submitEmergency} 
+                className="w-full py-3 bg-warning text-background rounded-xl text-sm font-black flex justify-center items-center gap-2 hover:bg-yellow-500 transition shadow-lg"
+              >
+                Submit Request
+              </button>
+            </motion.div>
           </div>
-        </div>
-      )}
+        )}
+      </AnimatePresence>
+
     </div>
   );
 }
