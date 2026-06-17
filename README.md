@@ -1,66 +1,214 @@
 # SmartPlate AI 🍽️✨
-**Predict. Vote. Save. AI that stops PG food wastage.**
 
-In a college PG where students live together, lunch is packed and sent to college daily assuming full attendance. However, many students skip college, leading to massive food wastage at the college counter. Students staying back in the PG cannot eat others' allocated food, and fixed menus (like repetitive Chicken Biryani) are often disliked, causing even more waste. 
+**Predict. Vote. Save.**
+An AI-powered food waste reduction platform for PG/college mess systems.
 
-SmartPlate AI is an intelligent food waste reduction system that solves this by combining attendance intent, menu voting, and Google Gemini AI predictions to cook exactly what is needed.
+SmartPlate AI helps PG owners and college mess staff reduce food wastage by tracking student attendance intent, collecting menu feedback, verifying meal consumption using QR codes, and using AI-based predictions to estimate how much food should be prepared.
 
 ---
 
-## 🛑 The Core Problem
-- **Blind Cooking:** PG owners cook based on total headcount (e.g., 55 students), not actual college attendance.
-- **Wasted Money & Food:** If 10 students skip college, 10 meals are wasted at ₹50/meal = ₹500 daily loss.
-- **Menu Fatigue:** Fixed menus result in high waste when students dislike the food but have no way to request a change.
+## 🚨 Problem Statement
 
-## 💡 The SmartPlate AI Solution
-1. **Attendance Locking:** Students mark if they are going to college tomorrow. The system auto-locks at 8:30 AM.
-2. **Menu Voting:** Students upvote/downvote the menu, providing real-time sentiment analysis.
-3. **QR Verification:** Students who are "Going" receive a QR code. This prevents duplicate meals and tracks exact consumption.
-4. **Gemini AI Predictive Engine:** The Admin dashboard uses Google Gemini to analyze attendance and sentiment, predicting the exact number of portions to cook and suggesting menu alternatives to minimize waste.
+In many PGs and college mess systems, food is prepared based on the total number of students instead of actual attendance or food demand. This creates multiple problems:
 
-## 🚀 Hackathon Pitch (Key Differentiators)
-- **Immediate ROI:** PG owners can see exact ₹ saved and kg of food waste avoided in real-time.
-- **AI What-If Simulator:** Admins can ask the AI "What if it rains tomorrow?" to instantly adjust portion sizing based on external factors.
-- **Frictionless UX:** Gorgeous dark mode, one-click voting, and instant QR generation.
+* **Blind Cooking:** Food is prepared for the full student count even when many students skip college.
+* **Food & Money Wastage:** If 10 students skip college and each meal costs ₹50, around ₹500 can be wasted in a single day.
+* **Menu Fatigue:** Students may dislike repetitive menus, leading to more uneaten food.
+* **No Real-Time Data:** Staff do not get accurate attendance or food demand updates before cooking.
 
-## 🛠 Architecture & Tech Stack
-- **Framework:** Next.js 16 (App Router) + TypeScript
-- **Styling:** Tailwind CSS v4 (Deep Dark Theme + #22c55e Accent)
-- **Animations:** Framer Motion
-- **Charts:** Chart.js + `react-chartjs-2`
-- **QR Generation:** `qrcode` library
-- **AI Engine:** Google Gemini (`@google/generative-ai`)
-- **State Management:** LocalStorage (for MVP speed and reliability)
+---
 
-### Architecture Diagram Flow
-1. **Student** -> Submits Attendance & Vote (Stored in LocalState) -> Generates QR Code.
-2. **Admin** -> Views Dashboard (Reads LocalState + Mock Data) -> Triggers AI Prediction.
-3. **Gemini API** -> Analyzes (Attendance + Sentiment + What-If Queries) -> Returns JSON.
-4. **Admin Dashboard** -> Displays Optimal Portions, Suggested Menus, and Waste Savings.
+## 💡 Solution
+
+SmartPlate AI solves this by combining:
+
+* **Attendance Intent Tracking**
+* **Menu Voting**
+* **QR-Based Meal Verification**
+* **AI-Powered Portion Prediction**
+* **Admin and Student Dashboards**
+
+The system helps staff prepare food based on actual demand instead of assumptions.
+
+---
+
+## ✨ Key Features
+
+### 👨‍🎓 Student Side
+
+* Mark whether the student is going to college.
+* View today’s menu.
+* Vote on the menu.
+* Generate QR code for meal verification.
+* Simple and responsive user interface.
+
+### 🧑‍💼 Admin/Staff Side
+
+* View student attendance intent.
+* Track expected meal count.
+* Monitor menu feedback.
+* Verify meals using QR status.
+* Use AI prediction to estimate required portions.
+
+### 🤖 AI Prediction
+
+SmartPlate AI uses Google Gemini AI to analyze attendance and menu sentiment data to suggest:
+
+* Estimated number of portions to cook
+* Possible food wastage reduction
+* Menu improvement suggestions
+* What-if analysis for special situations
+
+---
+
+## 🚀 Hackathon USP
+
+* **Immediate ROI:** Helps PG owners calculate money and food saved.
+* **AI What-If Simulator:** Staff can ask questions like “What if it rains tomorrow?” and adjust food preparation.
+* **QR Meal Verification:** Prevents duplicate meals and tracks actual consumption.
+* **Simple UX:** Clean dashboards for both students and staff.
+* **Real-World Impact:** Solves a practical food wastage problem in PGs and colleges.
+
+---
+
+## 🛠️ Tech Stack
+
+| Category         | Technology                |
+| ---------------- | ------------------------- |
+| Framework        | Next.js 16                |
+| Language         | TypeScript                |
+| Styling          | Tailwind CSS              |
+| Animations       | Framer Motion             |
+| Charts           | Chart.js, react-chartjs-2 |
+| QR Code          | qrcode                    |
+| AI Engine        | Google Gemini API         |
+| State Management | LocalStorage              |
+| Runtime          | Node.js                   |
+
+---
+
+## 🏗️ Architecture Flow
+
+```text
+Student
+   ↓
+Marks Attendance + Votes Menu
+   ↓
+Data Stored in Local State
+   ↓
+QR Code Generated
+   ↓
+Admin Dashboard Reads Data
+   ↓
+Gemini AI Analyzes Attendance + Sentiment
+   ↓
+Prediction Output: Required Portions + Waste Savings
+```
+
+---
 
 ## ⚙️ How to Run Locally
 
-1. **Install Dependencies**
-   ```bash
-   npm install
-   ```
+### 1. Clone the Repository
 
-2. **Environment Variables**
-   Create a `.env.local` file at the root:
-   ```env
-   # Optional: For AI predictions. If omitted, a deterministic mock fallback is used.
-   GEMINI_API_KEY=your_gemini_api_key
-   ```
+```bash
+git clone https://github.com/pinankshah8-Aa/Smartplate-AI.git
+cd Smartplate-AI
+```
 
-3. **Run the Application**
-   ```bash
-   npm run dev
-   ```
+### 2. Install Dependencies
 
-4. **Access the App**
-   Open [http://localhost:3000](http://localhost:3000)
+```bash
+npm install
+```
+
+### 3. Create Environment File
+
+Create a `.env.local` file in the root directory:
+
+```env
+GEMINI_API_KEY=your_gemini_api_key
+```
+
+If the API key is not provided, the app can use mock prediction logic for demo purposes.
+
+### 4. Run the Development Server
+
+```bash
+npm run dev
+```
+
+### 5. Open the App
+
+```text
+http://localhost:3000
+```
+
+---
 
 ## 🔑 Demo Credentials
 
-- **Student:** `student` / `student123`
-- **Admin:** `admin` / `admin123`
+### Admin Login
+
+```text
+Username: admin
+Password: admin123
+```
+
+---
+
+## 📸 Screenshots
+
+Add screenshots here after running the project.
+
+```text
+/screenshots/student-dashboard.png
+/screenshots/admin-dashboard.png
+/screenshots/qr-verification.png
+```
+
+---
+
+## 📌 Current Status
+
+This project is currently a hackathon MVP. It demonstrates the core idea using frontend dashboards, local state, QR generation, and AI-based prediction.
+
+---
+
+## 🔮 Future Improvements
+
+* Add MongoDB database integration.
+* Add real-time updates using WebSockets.
+* Add Web Push Notifications.
+* Add secure authentication.
+* Add role-based access for students and staff.
+* Add proper QR scanner module.
+* Add analytics for monthly food wastage.
+* Add test cases and CI workflow.
+* Deploy full-stack version.
+
+---
+
+## 🤝 Open Source Goals
+
+This project is being improved as part of my open-source learning journey. Future goals include:
+
+* Writing clean documentation
+* Adding beginner-friendly issues
+* Improving code structure
+* Adding tests
+* Preparing for LFX Mentorship and GSoC
+
+---
+
+## 👨‍💻 Author
+
+**Pinank Shah**
+BE CSE (AI/ML) Student
+GitHub: [@pinankshah8-Aa](https://github.com/pinankshah8-Aa)
+
+---
+
+## 📄 License
+
+This project is currently for learning and hackathon demonstration purposes. A proper open-source license will be added soon.
