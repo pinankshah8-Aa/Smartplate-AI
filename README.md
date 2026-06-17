@@ -228,4 +228,5 @@ GitHub: [@pinankshah8-Aa](https://github.com/pinankshah8-Aa)
 
 ## 📄 License
 
-This project is currently for learning and hackathon demonstration purposes. A proper open-source license will be added soon.
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for more details.
+
