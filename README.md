@@ -159,13 +159,30 @@ Password: admin123
 
 ## 📸 Screenshots
 
-Add screenshots here after running the project.
+### Login / Landing Page
 
-```text
-/screenshots/student-dashboard.png
-/screenshots/admin-dashboard.png
-/screenshots/qr-verification.png
-```
+![Login Page](public/screenshots/01-login-page.png)
+
+### Student Today Dashboard
+
+![Student Today Dashboard](public/screenshots/02-student-today-dashboard.png)
+
+### Student Community & Voting
+
+![Student Community](public/screenshots/03-student-community.png)
+
+### Manager Overview Dashboard
+
+![Manager Overview](public/screenshots/04-manager-overview.png)
+
+### Manager Operations Panel
+
+![Manager Operations](public/screenshots/05-manager-operations.png)
+
+### Manager Students & Risk Panel
+
+![Manager Students Risk](public/screenshots/06-manager-students-risk.png)
+
 
 ---
 
