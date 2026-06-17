@@ -3,9 +3,10 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import { LogOut, CheckCircle, XCircle, Clock, ThumbsUp, ThumbsDown, AlertTriangle, Leaf, CalendarCheck, TrendingDown, MessageSquare, Send, CalendarDays, AlertOctagon, Sparkles, Check, Lock, Utensils, ThumbsUpIcon, ThumbsDownIcon } from 'lucide-react';
+import { LogOut, CheckCircle, XCircle, Clock, ThumbsUp, ThumbsDown, AlertTriangle, Leaf, CalendarCheck, TrendingDown, MessageSquare, Send, CalendarDays, AlertOctagon, Sparkles, Check, Lock, ChevronRight } from 'lucide-react';
 import { toast } from 'sonner';
 import QRCode from 'qrcode';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 const WEEKLY_MENU = [
   { day: 'Mon', menu: 'Dal Makhani, Jeera Rice, Paneer Tikka, Roti, Salad' },
@@ -36,32 +37,37 @@ export default function StudentDashboard() {
   const [pollVote, setPollVote] = useState<boolean|null>(null);
   const [pollStats, setPollStats] = useState({ changeVotes: 0, keepVotes: 0, totalVotes: 0, changePercentage: 0 });
 
-  const [activeTab, setActiveTab] = useState('Mon');
+  const [activeDayTab, setActiveDayTab] = useState('Mon');
+  const [activeTab, setActiveTab] = useState<'today' | 'menu' | 'community'>('today');
   const [cutoffTime, setCutoffTime] = useState('08:30');
   const [isTimeLocked, setIsTimeLocked] = useState(false);
 
-  // Mock Waste Data from DB User object
   const [wasteRisk, setWasteRisk] = useState({ missedMeals: 0, isHighRisk: false });
+  const [leaderboard, setLeaderboard] = useState<any[]>([]);
+  const [weeklyMenu, setWeeklyMenu] = useState<{day: string, menu: string}[]>(WEEKLY_MENU);
+
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const storedUser = localStorage.getItem('smartplate_user');
-    if (!storedUser) {
-      router.push('/');
-      return;
-    }
-    const parsedUser = JSON.parse(storedUser);
-    if (parsedUser.role !== 'student') {
-      router.push('/');
-      return;
-    }
-    setUser(parsedUser);
-    
-    setWasteRisk({
-      missedMeals: parsedUser.missedMeals || 0,
-      isHighRisk: (parsedUser.missedMeals || 0) >= 3
-    });
-
-    loadData(parsedUser.id);
+    const fetchUser = async () => {
+      try {
+        const res = await fetch('/api/auth/me');
+        const data = await res.json();
+        if (!data.success || data.user.role !== 'student') {
+          router.push('/');
+          return;
+        }
+        setUser(data.user);
+        setWasteRisk({
+          missedMeals: data.user.missedMeals || 0,
+          isHighRisk: (data.user.missedMeals || 0) >= 3
+        });
+        loadData(data.user.id);
+      } catch (e) {
+        router.push('/');
+      }
+    };
+    fetchUser();
   }, [router]);
 
   const formatTimeToAMPM = (time24: string) => {
@@ -73,8 +79,8 @@ export default function StudentDashboard() {
   };
 
   const loadData = async (userId: string) => {
+    setIsLoading(true);
     try {
-      // 1. Fetch cutoff time
       const resSettings = await fetch('/api/admin/settings');
       const dataSettings = await resSettings.json();
       if (dataSettings.success) {
@@ -82,23 +88,45 @@ export default function StudentDashboard() {
         checkLock(dataSettings.cutoffTime);
       }
 
-      // 2. Fetch attendance
       const resAtt = await fetch(`/api/student/attendance?userId=${userId}`);
       const dataAtt = await resAtt.json();
       if (dataAtt.success) {
         setAttendance(dataAtt.attendance);
         setIsSubmitted(dataAtt.isSubmitted || false);
         setCollectedFood(dataAtt.collectedFood || false);
-        if (dataAtt.attendance === 'going' && dataAtt.isSubmitted) generateQR();
+        if (dataAtt.attendance === 'going' && dataAtt.isSubmitted) generateQR(userId);
       }
-      // 3. Fetch Poll Stats
+
       const resPoll = await fetch('/api/student/poll/stats');
       const dataPoll = await resPoll.json();
       if (dataPoll.success) {
         setPollStats(dataPoll.stats);
       }
+
+      const resLeaderboard = await fetch('/api/student/leaderboard');
+      const dataLeaderboard = await resLeaderboard.json();
+      if (dataLeaderboard.success) {
+        setLeaderboard(dataLeaderboard.leaderboard);
+      }
+
+      const resMenu = await fetch('/api/admin/menu');
+      const dataMenu = await resMenu.json();
+      if (dataMenu.success && dataMenu.menus && dataMenu.menus.length > 0) {
+        const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        const formattedMenu = dataMenu.menus.map((m: any) => {
+          const d = new Date(m.dateString);
+          return {
+            day: days[d.getDay()],
+            menu: [m.breakfast, m.lunch, m.dinner].filter(Boolean).join(' | ') || 'Menu not set'
+          };
+        });
+        setWeeklyMenu(formattedMenu);
+        setActiveDayTab(formattedMenu[0]?.day || 'Mon');
+      }
     } catch (e) {
       console.error(e);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -121,17 +149,32 @@ export default function StudentDashboard() {
 
   const isLocked = isTimeLocked || isSubmitted;
 
-  const generateQR = async () => {
+  const generateQR = async (userId: string) => {
     try {
-      const url = await QRCode.toDataURL(user.id, {
-        color: { dark: '#22c55e', light: '#ffffff' },
-        margin: 2
-      });
-      setQrSrc(url);
+      const res = await fetch(`/api/student/qr-token?userId=${userId}`);
+      const data = await res.json();
+      if (data.success) {
+        const url = await QRCode.toDataURL(data.token, {
+          color: { dark: '#000000', light: '#ffffff' },
+          margin: 2
+        });
+        setQrSrc(url);
+      }
     } catch (err) {
       console.error(err);
     }
   };
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (attendance === 'going' && isSubmitted && user) {
+      generateQR(user.id); // initial fetch
+      interval = setInterval(() => {
+        generateQR(user.id);
+      }, 55000); // refresh every 55s
+    }
+    return () => clearInterval(interval);
+  }, [attendance, isSubmitted, user]);
 
   const selectAttendance = (status: 'going'|'not_going') => {
     if (isLocked) return;
@@ -151,9 +194,8 @@ export default function StudentDashboard() {
       const data = await res.json();
       if (data.success) {
         setIsSubmitted(true);
-        toast.success(`Submitted Successfully!`);
-        if (attendance === 'going') generateQR();
-        else setQrSrc('');
+        toast.success("Attendance locked!");
+        if (attendance === 'going') generateQR(user.id);
       }
     } catch (e) {
       toast.error("Failed to submit attendance");
@@ -161,32 +203,36 @@ export default function StudentDashboard() {
   };
 
   const submitFeedback = async () => {
-    if (!rating) return toast.error("Please select Like or Dislike");
+    if (!rating) return toast.error("Please select a rating");
     try {
-      await fetch('/api/student/rating', {
+      const res = await fetch('/api/student/rating', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user.id, menu: 'Paneer Butter Masala', rating, comment })
+        body: JSON.stringify({ userId: user.id, rating, comment })
       });
-      toast.success("Feedback submitted!");
-      setRating(null);
-      setComment('');
+      if (res.ok) {
+        toast.success("Feedback submitted!");
+        setRating(null);
+        setComment('');
+      }
     } catch (e) {
-      toast.error("Failed to submit rating");
+      toast.error("Failed to submit feedback");
     }
   };
 
-  const submitPoll = async (voteToChange: boolean) => {
+  const submitPoll = async (vote: boolean) => {
     try {
-      await fetch('/api/student/poll', {
+      const res = await fetch('/api/student/poll', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user.id, menu: 'Paneer Butter Masala', voteToChange: voteToChange })
+        body: JSON.stringify({ userId: user.id, voteChange: vote })
       });
-      setPollVote(voteToChange);
-      toast.success("Vote recorded successfully!");
+      const data = await res.json();
+      if (data.success) {
+        setPollVote(vote);
+        toast.success("Vote recorded");
+      }
       
-      // Refetch stats
       const resPoll = await fetch('/api/student/poll/stats');
       const dataPoll = await resPoll.json();
       if (dataPoll.success) setPollStats(dataPoll.stats);
@@ -211,115 +257,199 @@ export default function StudentDashboard() {
     }
   };
 
-  const handleLogout = () => {
-    localStorage.clear();
-    router.push('/');
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+      localStorage.clear();
+      router.push('/');
+    } catch(e) {}
   };
 
-  if (!user) return <div className="min-h-screen bg-background" />;
+  if (isLoading || !user) {
+    return (
+      <div className="min-h-screen bg-background text-foreground pb-24 relative overflow-hidden">
+        <header className="glass-panel sticky top-0 z-40 border-b border-white/5 px-6 py-4">
+          <div className="max-w-5xl mx-auto flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-white/5 rounded-xl animate-pulse" />
+              <div className="space-y-2">
+                <div className="w-32 h-4 bg-white/5 rounded animate-pulse" />
+                <div className="w-20 h-2 bg-white/5 rounded animate-pulse" />
+              </div>
+            </div>
+            <div className="w-8 h-8 bg-white/5 rounded-xl animate-pulse" />
+          </div>
+        </header>
+        <main className="max-w-5xl mx-auto px-4 mt-8 space-y-8">
+          <div className="glass-card h-72 rounded-3xl animate-pulse bg-white/5 relative overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full animate-[shimmer_1.5s_infinite]" />
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="glass-card h-64 rounded-3xl animate-pulse bg-white/5 relative overflow-hidden" />
+            <div className="glass-card h-64 rounded-3xl animate-pulse bg-white/5 relative overflow-hidden" />
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-background text-foreground pb-20">
-      <header className="bg-card border-b border-border px-6 py-4 sticky top-0 z-40">
-        <div className="max-w-5xl mx-auto flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-black text-white">SmartPlate AI</h1>
-            <p className="text-xs text-primary font-bold">Hello, {user.name}</p>
+    <div className="min-h-screen bg-background text-foreground pb-20 overflow-x-hidden selection:bg-primary/30 w-full">
+      
+      {/* Background Animated Elements */}
+      <div className="absolute top-0 left-0 w-full h-[300px] bg-gradient-to-b from-primary/10 to-transparent pointer-events-none" />
+      <div className="absolute top-[20%] right-[-10%] w-[50%] h-[50%] bg-primary/10 rounded-full mix-blend-screen blur-[120px] pointer-events-none" />
+      <div className="absolute bottom-[-20%] left-[-10%] w-[50%] h-[50%] bg-info/10 rounded-full mix-blend-screen blur-[120px] pointer-events-none" />
+
+      <header className="glass-panel sticky top-0 z-40 border-b border-white/5 px-4 sm:px-8 xl:px-12 py-4">
+        <div className="w-full flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-gradient-to-br from-primary to-primary-dark rounded-xl border border-white/10 shadow-[0_0_15px_rgba(16,185,129,0.3)]">
+              <Sparkles className="h-5 w-5 text-white" />
+            </div>
+            <div>
+              <h1 className="text-base sm:text-lg font-black text-white leading-tight">SmartPlate AI</h1>
+              <p className="text-[10px] text-primary-light font-bold tracking-wider uppercase">Student Portal</p>
+            </div>
           </div>
-          <button onClick={handleLogout} className="p-2 text-muted hover:text-white transition">
-            <LogOut className="h-5 w-5" />
-          </button>
+          <div className="flex items-center gap-3 sm:gap-4">
+            <span className="text-sm text-muted hidden md:inline-block">Welcome, <strong className="text-white">{user.name}</strong></span>
+            <ThemeToggle />
+            <button onClick={handleLogout} className="p-2 bg-card border border-border rounded-xl text-muted hover:text-white hover:border-white/20 transition-all shadow-sm">
+              <LogOut className="h-4 w-4" />
+            </button>
+          </div>
         </div>
       </header>
 
-      <main className="max-w-5xl mx-auto px-4 mt-8 space-y-6">
+      <main className="w-full px-4 sm:px-8 xl:px-12 mt-6 sm:mt-8 space-y-6 sm:space-y-8 relative z-10">
         
-        {wasteRisk.isHighRisk && !collectedFood && attendance === 'going' && (
-          <motion.div initial={{opacity:0, y:-10}} animate={{opacity:1,y:0}} className="bg-danger/10 border border-danger p-4 rounded-2xl flex items-start gap-3 shadow-[0_0_15px_-3px_rgba(239,68,68,0.2)]">
-            <AlertOctagon className="h-6 w-6 text-danger shrink-0 mt-0.5" />
+        {/* Navigation Tabs */}
+        <div className="flex bg-card p-1.5 rounded-2xl mb-8 shadow-sm border border-border overflow-x-auto scrollbar-hide relative z-20">
+          {['today', 'menu', 'community'].map((tab) => (
+            <button 
+              key={tab} 
+              onClick={() => setActiveTab(tab as any)} 
+              className={`relative flex-1 py-2.5 sm:py-3 text-sm font-bold rounded-xl transition-colors duration-300 ${activeTab === tab ? 'text-white' : 'text-muted hover:text-foreground'}`}
+            >
+              {activeTab === tab && (
+                <motion.div 
+                  layoutId="studentTabBubble"
+                  className="absolute inset-0 bg-primary rounded-xl shadow-md -z-10"
+                  transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                />
+              )}
+              <span className="relative z-10">{tab === 'today' ? 'Today' : tab === 'menu' ? 'Weekly Menu' : 'Community'}</span>
+            </button>
+          ))}
+        </div>
+
+        {activeTab === 'today' && wasteRisk.isHighRisk && !collectedFood && attendance === 'going' && (
+          <motion.div initial={{opacity:0, y:-10}} animate={{opacity:1,y:0}} className="glass-panel border-danger/30 bg-danger/5 p-4 rounded-2xl flex items-start gap-4 shadow-[0_0_20px_-5px_rgba(244,63,94,0.2)]">
+            <div className="p-2 bg-danger/20 rounded-full flex-shrink-0">
+              <AlertOctagon className="h-5 w-5 text-danger" />
+            </div>
             <div>
-              <h3 className="text-danger font-bold text-sm">Food Waste Warning</h3>
-              <p className="text-danger/80 text-xs mt-1">You failed to collect lunch for <strong>{wasteRisk.missedMeals} days</strong>. Please ensure you collect your meal today.</p>
+              <h3 className="text-danger font-bold text-sm mb-1">Food Waste Warning</h3>
+              <p className="text-danger/80 text-xs">You failed to collect lunch for <strong>{wasteRisk.missedMeals} days</strong>. Please ensure you collect your meal today to avoid account restrictions.</p>
             </div>
           </motion.div>
         )}
 
         {/* Personal Impact */}
-        <div className="grid grid-cols-3 gap-4">
-          <div className="bg-card border border-border p-4 rounded-2xl flex flex-col items-center text-center shadow-lg">
-            <Leaf className="h-6 w-6 text-primary mb-2" />
-            <span className="text-2xl font-black text-white">450</span>
-            <span className="text-[10px] text-muted uppercase font-bold tracking-wider mt-1">Eco Points</span>
+        {activeTab === 'today' && (
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}
+            className="grid grid-cols-1 sm:grid-cols-3 gap-4"
+          >
+          <div className="glass-card p-6 rounded-3xl flex items-center gap-4 sm:flex-col sm:text-center sm:justify-center group">
+            <div className="p-4 bg-primary/10 rounded-2xl group-hover:scale-110 transition-transform flex-shrink-0">
+              <Leaf className="h-6 w-6 text-primary" />
+            </div>
+            <div>
+              <div className="text-3xl font-black text-white">450</div>
+              <div className="text-[10px] text-muted uppercase font-bold tracking-widest mt-1">Eco Points</div>
+            </div>
           </div>
-          <div className="bg-card border border-border p-4 rounded-2xl flex flex-col items-center text-center shadow-lg">
-            <CalendarCheck className="h-6 w-6 text-info mb-2" />
-            <span className="text-2xl font-black text-white">18</span>
-            <span className="text-[10px] text-muted uppercase font-bold tracking-wider mt-1">Meals Eaten</span>
+          <div className="glass-card p-6 rounded-3xl flex items-center gap-4 sm:flex-col sm:text-center sm:justify-center group">
+            <div className="p-4 bg-info/10 rounded-2xl group-hover:scale-110 transition-transform flex-shrink-0">
+              <CalendarCheck className="h-6 w-6 text-info" />
+            </div>
+            <div>
+              <div className="text-3xl font-black text-white">18</div>
+              <div className="text-[10px] text-muted uppercase font-bold tracking-widest mt-1">Meals Eaten</div>
+            </div>
           </div>
-          <div className="bg-card border border-border p-4 rounded-2xl flex flex-col items-center text-center shadow-lg">
-            <TrendingDown className="h-6 w-6 text-warning mb-2" />
-            <span className="text-2xl font-black text-white">2.5kg</span>
-            <span className="text-[10px] text-muted uppercase font-bold tracking-wider mt-1">Waste Avoided</span>
+          <div className="glass-card p-6 rounded-3xl flex items-center gap-4 sm:flex-col sm:text-center sm:justify-center group">
+            <div className="p-4 bg-warning/10 rounded-2xl group-hover:scale-110 transition-transform flex-shrink-0">
+              <TrendingDown className="h-6 w-6 text-warning" />
+            </div>
+            <div>
+              <div className="text-3xl font-black text-white">2.5<span className="text-lg">kg</span></div>
+              <div className="text-[10px] text-muted uppercase font-bold tracking-widest mt-1">Waste Avoided</div>
+            </div>
           </div>
-        </div>
+          </motion.div>
+        )}
 
         {/* Attendance Card */}
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-card border border-border rounded-3xl p-8 relative overflow-hidden shadow-xl">
-          <div className="absolute top-0 right-0 p-4">
-            <div className={`flex items-center gap-2 border px-3 py-1.5 rounded-full ${isLocked ? 'bg-danger/10 border-danger/30' : 'bg-background border-border'}`}>
+        {activeTab === 'today' && (
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.1 }} className="glass-card rounded-3xl p-6 md:p-10 relative overflow-hidden">
+          <div className="absolute top-0 right-0 p-6 pointer-events-none">
+            <div className={`flex items-center gap-2 border px-3 py-1.5 rounded-full backdrop-blur-md ${isLocked ? 'bg-danger/10 border-danger/30' : 'bg-background/50 border-white/10'}`}>
               <Clock className={`h-4 w-4 ${isLocked ? 'text-danger' : 'text-warning'}`} />
-              <span className={`text-xs font-bold ${isLocked ? 'text-danger' : 'text-muted'}`}>
+              <span className={`text-[10px] uppercase tracking-wider font-bold ${isLocked ? 'text-danger' : 'text-muted'}`}>
                 {isTimeLocked ? `Locked at ${formatTimeToAMPM(cutoffTime)}` : `Auto-locks at ${formatTimeToAMPM(cutoffTime)}`}
               </span>
             </div>
           </div>
 
-          <h2 className="text-2xl font-black text-white mb-2 mt-4">Going to college tomorrow?</h2>
-          <p className="text-muted text-sm mb-8">Help us predict exact food quantities and avoid wastage.</p>
+          <h2 className="text-2xl md:text-3xl font-black text-white mb-2 mt-2">Going to college tomorrow?</h2>
+          <p className="text-muted text-sm md:text-base mb-8 max-w-xl">Your choice directly impacts food preparation. Help us predict exact quantities and completely eliminate PG food waste.</p>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <button 
               onClick={() => selectAttendance('going')}
               disabled={isLocked}
-              className={`p-6 rounded-2xl border-2 flex flex-col items-center gap-4 transition 
-                ${attendance === 'going' ? 'border-primary bg-primary/10 shadow-[0_0_30px_-5px_rgba(34,197,94,0.3)]' : 'border-border bg-background'}
-                ${isLocked && attendance !== 'going' ? 'opacity-50 cursor-not-allowed' : 'hover:border-primary/50'}
+              className={`p-6 rounded-2xl border flex items-center justify-center gap-4 transition-all duration-300 transform active:scale-[0.98]
+                ${attendance === 'going' ? 'border-primary bg-primary/10 shadow-[0_0_30px_-5px_rgba(16,185,129,0.3)]' : 'border-white/10 bg-background/40 hover:bg-card hover:border-white/20'}
+                ${isLocked && attendance !== 'going' ? 'opacity-40 cursor-not-allowed filter grayscale' : ''}
               `}
             >
-              <div className={`p-4 rounded-full ${attendance === 'going' ? 'bg-primary text-white' : 'bg-card border border-border text-muted'}`}>
-                <CheckCircle className="h-8 w-8" />
+              <div className={`p-3 rounded-full transition-colors duration-300 ${attendance === 'going' ? 'bg-primary text-white shadow-[0_0_15px_rgba(16,185,129,0.5)]' : 'bg-card border border-white/10 text-muted'}`}>
+                <CheckCircle className="h-6 w-6" />
               </div>
-              <span className={`font-black text-lg ${attendance === 'going' ? 'text-primary' : 'text-white'}`}>Yes, Going</span>
+              <span className={`font-black text-lg ${attendance === 'going' ? 'text-primary drop-shadow-[0_2px_4px_rgba(16,185,129,0.4)]' : 'text-white'}`}>Yes, I'm Going</span>
             </button>
             
             <button 
               onClick={() => selectAttendance('not_going')}
               disabled={isLocked}
-              className={`p-6 rounded-2xl border-2 flex flex-col items-center gap-4 transition 
-                ${attendance === 'not_going' ? 'border-danger bg-danger/10 shadow-[0_0_30px_-5px_rgba(239,68,68,0.2)]' : 'border-border bg-background'}
-                ${isLocked && attendance !== 'not_going' ? 'opacity-50 cursor-not-allowed' : 'hover:border-danger/50'}
+              className={`p-6 rounded-2xl border flex items-center justify-center gap-4 transition-all duration-300 transform active:scale-[0.98]
+                ${attendance === 'not_going' ? 'border-danger bg-danger/10 shadow-[0_0_30px_-5px_rgba(244,63,94,0.2)]' : 'border-white/10 bg-background/40 hover:bg-card hover:border-white/20'}
+                ${isLocked && attendance !== 'not_going' ? 'opacity-40 cursor-not-allowed filter grayscale' : ''}
               `}
             >
-              <div className={`p-4 rounded-full ${attendance === 'not_going' ? 'bg-danger text-white' : 'bg-card border border-border text-muted'}`}>
-                <XCircle className="h-8 w-8" />
+              <div className={`p-3 rounded-full transition-colors duration-300 ${attendance === 'not_going' ? 'bg-danger text-white shadow-[0_0_15px_rgba(244,63,94,0.5)]' : 'bg-card border border-white/10 text-muted'}`}>
+                <XCircle className="h-6 w-6" />
               </div>
-              <span className={`font-black text-lg ${attendance === 'not_going' ? 'text-danger' : 'text-white'}`}>Not Going</span>
+              <span className={`font-black text-lg ${attendance === 'not_going' ? 'text-danger drop-shadow-[0_2px_4px_rgba(244,63,94,0.4)]' : 'text-white'}`}>Not Going</span>
             </button>
           </div>
 
           <AnimatePresence>
             {!isSubmitted && attendance !== 'pending' && (
-              <motion.div initial={{ opacity:0, y:-10 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0, y:-10 }} className="mt-6">
-                <button onClick={submitAttendance} className="w-full py-4 bg-primary text-white font-black rounded-xl text-lg flex items-center justify-center gap-2 hover:bg-primary-dark transition shadow-lg shadow-primary/30">
-                  <Check className="h-6 w-6" /> Submit Attendance
+              <motion.div initial={{ opacity:0, y:-10, height: 0 }} animate={{ opacity:1, y:0, height: 'auto' }} exit={{ opacity:0, y:-10, height: 0 }} className="mt-6">
+                <button onClick={submitAttendance} className="w-full py-4 bg-primary text-white font-black rounded-xl text-base flex items-center justify-center gap-2 hover:bg-primary-light transition-all shadow-[0_0_20px_-5px_rgba(16,185,129,0.4)] hover:shadow-[0_0_25px_-5px_rgba(16,185,129,0.6)] transform hover:-translate-y-0.5">
+                  <Check className="h-5 w-5" /> Confirm Attendance
                 </button>
               </motion.div>
             )}
             {isSubmitted && (
               <motion.div initial={{ opacity:0 }} animate={{ opacity:1 }} className="mt-6 flex justify-center">
-                <div className="flex items-center gap-2 px-6 py-3 bg-primary/10 border border-primary/20 rounded-full">
+                <div className="flex items-center gap-2 px-6 py-3 bg-primary/10 border border-primary/20 rounded-full shadow-sm">
                   <Lock className="h-4 w-4 text-primary" />
-                  <span className="text-primary font-bold text-sm">Submitted Successfully</span>
+                  <span className="text-primary font-bold text-sm tracking-wide">Choice Locked Successfully</span>
                 </div>
               </motion.div>
             )}
@@ -327,185 +457,295 @@ export default function StudentDashboard() {
 
           <AnimatePresence>
             {isSubmitted && attendance === 'going' && qrSrc && (
-               <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="mt-8 pt-8 border-t border-border flex flex-col items-center overflow-hidden">
-                 <p className="text-sm font-bold text-muted uppercase tracking-wider mb-4">Your Lunch Verification QR</p>
-                 <div className="bg-white p-2 rounded-xl shadow-2xl">
-                   <img src={qrSrc} alt="Lunch QR" className="w-48 h-48" />
+               <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="mt-8 pt-8 border-t border-white/10 flex flex-col items-center overflow-hidden">
+                 <p className="text-[10px] font-bold text-muted uppercase tracking-widest mb-4">Your Lunch Verification QR</p>
+                 <div className="bg-white p-3 rounded-2xl shadow-[0_10px_40px_-10px_rgba(16,185,129,0.3)] relative group">
+                   <div className="absolute inset-0 border-2 border-primary/50 rounded-2xl scale-105 opacity-0 group-hover:opacity-100 group-hover:scale-100 transition-all duration-300 pointer-events-none" />
+                   <img src={qrSrc} alt="Lunch QR" className="w-48 h-48 md:w-56 md:h-56" />
                  </div>
                  
                  {!collectedFood ? (
-                   <div className="mt-6 flex items-center gap-2 text-warning font-bold">
-                     <Clock className="h-5 w-5" /> Waiting for QR Scan
+                   <div className="mt-6 flex items-center gap-2 text-warning font-bold bg-warning/10 px-4 py-2 rounded-full border border-warning/20">
+                     <Clock className="h-4 w-4 animate-pulse" /> Waiting for QR Scan
                    </div>
                  ) : (
-                   <div className="mt-6 flex items-center gap-2 text-primary font-bold">
-                     <CheckCircle className="h-5 w-5" /> Food Collected
+                   <div className="mt-6 flex items-center gap-2 text-primary font-bold bg-primary/10 px-4 py-2 rounded-full border border-primary/20">
+                     <CheckCircle className="h-4 w-4" /> Food Collected
                    </div>
                  )}
                </motion.div>
             )}
           </AnimatePresence>
-        </motion.div>
+          </motion.div>
+        )}
 
-        {/* Full Weekly Vegetarian Menu */}
-        <div className="bg-card border border-border rounded-3xl p-6 shadow-xl">
-           <h3 className="text-sm font-bold text-muted uppercase tracking-wider mb-4 flex items-center gap-2">
-             <CalendarDays className="h-4 w-4" /> Full Weekly Vegetarian Menu
-           </h3>
-           <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide mb-4">
-             {WEEKLY_MENU.map((item) => (
-               <button 
-                 key={item.day}
-                 onClick={() => setActiveTab(item.day)}
-                 className={`px-4 py-2 rounded-xl text-sm font-bold shrink-0 transition ${activeTab === item.day ? 'bg-primary text-white shadow-lg shadow-primary/20' : 'bg-background border border-border text-muted hover:text-white'}`}
-               >
-                 {item.day}
-               </button>
-             ))}
-           </div>
-           <div className="bg-background border border-border rounded-2xl p-6 min-h-[100px] flex items-center shadow-inner">
-             <p className="text-lg text-white font-medium">
-               {WEEKLY_MENU.find(m => m.day === activeTab)?.menu}
-             </p>
-           </div>
-        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Full Weekly Vegetarian Menu */}
+          {activeTab === 'menu' && (
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.2 }} className="glass-card rounded-3xl p-6 md:p-8 flex flex-col lg:col-span-2">
+             <h3 className="text-[10px] font-bold text-muted uppercase tracking-widest mb-4 flex items-center gap-2">
+               <CalendarDays className="h-4 w-4 text-primary" /> Full Weekly Vegetarian Menu
+             </h3>
+             <div className="flex gap-2 overflow-x-auto pb-4 scrollbar-hide mb-2 -mx-2 px-2">
+               {weeklyMenu.map((item) => (
+                 <button 
+                   key={item.day}
+                   onClick={() => setActiveDayTab(item.day)}
+                   className={`px-5 py-2.5 rounded-full text-sm font-bold shrink-0 transition-all duration-300 ${activeDayTab === item.day ? 'bg-primary text-white shadow-[0_0_15px_-3px_rgba(16,185,129,0.4)] scale-105' : 'bg-card border border-white/5 text-muted hover:text-white hover:border-white/20 hover:bg-background'}`}
+                 >
+                   {item.day}
+                 </button>
+               ))}
+             </div>
+             <div className="bg-background/60 border border-white/5 rounded-2xl p-6 min-h-[120px] flex items-center shadow-inner mt-auto">
+               <p className="text-lg text-white/90 font-medium leading-relaxed">
+                 {weeklyMenu.find(m => m.day === activeDayTab)?.menu}
+               </p>
+             </div>
+            </motion.div>
+          )}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Majority Polling Card */}
-          <div className="bg-primary/5 border border-primary/20 rounded-3xl p-6 shadow-xl flex flex-col">
-            <h3 className="text-sm font-bold text-primary uppercase tracking-wider mb-2 flex items-center gap-2"><MessageSquare className="h-4 w-4" /> Majority Polling</h3>
-            <p className="text-xs text-muted mb-4">Vote to change today's main course. If majority dislikes it, admin will be alerted.</p>
+          {activeTab === 'community' && (
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.3 }} className="glass-card border-primary/20 rounded-3xl p-6 md:p-8 flex flex-col relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-[40px] pointer-events-none" />
+            <h3 className="text-[10px] font-bold text-primary uppercase tracking-widest mb-2 flex items-center gap-2 relative z-10"><MessageSquare className="h-4 w-4" /> Democratic Polling</h3>
+            <p className="text-xs text-muted mb-6 relative z-10">Vote to change today's main course. If majority dislikes it, admin will automatically be alerted.</p>
             
-            {pollStats.changePercentage > 50 && pollStats.totalVotes > 2 && (
-              <motion.div initial={{opacity:0}} animate={{opacity:1}} className="bg-warning/20 border border-warning/40 px-3 py-2 rounded-xl flex items-center gap-2 mb-4 shadow-[0_0_10px_-3px_rgba(234,179,8,0.3)]">
-                <AlertTriangle className="h-4 w-4 text-warning" />
-                <span className="text-warning text-xs font-bold">Majority wants change!</span>
-              </motion.div>
-            )}
+            <AnimatePresence>
+              {pollStats.changePercentage > 50 && pollStats.totalVotes > 2 && (
+                <motion.div initial={{opacity:0, height:0}} animate={{opacity:1, height:'auto'}} exit={{opacity:0, height:0}} className="bg-warning/10 border border-warning/30 px-4 py-3 rounded-xl flex items-center gap-3 mb-6 shadow-sm overflow-hidden">
+                  <AlertTriangle className="h-5 w-5 text-warning shrink-0" />
+                  <span className="text-warning text-sm font-bold tracking-wide">Majority wants a change!</span>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
-            <div className="bg-card border border-border rounded-2xl p-5 shadow-inner mb-6 flex-1">
+            <div className="bg-background/60 border border-white/5 rounded-2xl p-6 shadow-inner mb-6 relative z-10">
               <h4 className="text-xl font-black text-white text-center mb-1">Paneer Butter Masala</h4>
-              <p className="text-xs text-center text-muted mb-4">Do you want to change this menu item?</p>
+              <p className="text-[10px] uppercase tracking-wider text-center text-muted mb-6">Do you want to change this menu item?</p>
               
               {/* Progress Bar */}
               <div className="mb-2">
-                <div className="flex justify-between text-[10px] font-bold uppercase tracking-wider mb-1">
-                  <span className="text-warning">Change It ({pollStats.changePercentage}%)</span>
-                  <span className="text-primary">Keep It ({100 - pollStats.changePercentage}%)</span>
+                <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest mb-2">
+                  <span className="text-warning flex items-center gap-1">Change It <span className="text-white/50">({pollStats.changePercentage}%)</span></span>
+                  <span className="text-primary flex items-center gap-1"><span className="text-white/50">({100 - pollStats.changePercentage}%)</span> Keep It</span>
                 </div>
-                <div className="w-full bg-primary/20 rounded-full h-1.5 flex overflow-hidden">
+                <div className="w-full bg-card rounded-full h-2 flex overflow-hidden border border-white/5">
                   <div 
                     style={{ width: `${pollStats.changePercentage}%` }} 
-                    className="bg-warning h-full transition-all duration-500"
+                    className="bg-gradient-to-r from-warning to-orange-400 h-full transition-all duration-700 ease-out"
+                  />
+                  <div 
+                    style={{ width: `${100 - pollStats.changePercentage}%` }} 
+                    className="bg-gradient-to-r from-primary to-primary-light h-full transition-all duration-700 ease-out"
                   />
                 </div>
               </div>
             </div>
             
-            <div className="flex gap-3">
+            <div className="flex gap-3 mt-auto relative z-10">
               <button 
                 onClick={() => submitPoll(true)}
                 disabled={pollVote !== null}
-                className={`flex-1 py-3 rounded-xl border flex justify-center items-center gap-2 font-bold transition text-sm ${pollVote === true ? 'bg-warning/20 border-warning text-warning shadow-[0_0_15px_-3px_rgba(234,179,8,0.3)]' : 'bg-background border-border text-muted hover:border-warning hover:text-warning'} ${pollVote !== null && pollVote !== true ? 'opacity-50' : ''}`}
+                className={`flex-1 py-3.5 rounded-xl border flex justify-center items-center gap-2 font-bold transition-all duration-300 text-sm ${pollVote === true ? 'bg-warning/20 border-warning/50 text-warning shadow-[0_0_15px_-3px_rgba(245,158,11,0.3)]' : 'bg-card border-white/10 text-muted hover:border-warning/50 hover:text-warning hover:bg-background'} ${pollVote !== null && pollVote !== true ? 'opacity-40 grayscale' : 'active:scale-95'}`}
               >
                 Yes, Change it
               </button>
               <button 
                 onClick={() => submitPoll(false)}
                 disabled={pollVote !== null}
-                className={`flex-1 py-3 rounded-xl border flex justify-center items-center gap-2 font-bold transition text-sm ${pollVote === false ? 'bg-primary/20 border-primary text-primary shadow-[0_0_15px_-3px_rgba(34,197,94,0.3)]' : 'bg-background border-border text-muted hover:border-primary hover:text-primary'} ${pollVote !== null && pollVote !== false ? 'opacity-50' : ''}`}
+                className={`flex-1 py-3.5 rounded-xl border flex justify-center items-center gap-2 font-bold transition-all duration-300 text-sm ${pollVote === false ? 'bg-primary/20 border-primary/50 text-primary shadow-[0_0_15px_-3px_rgba(16,185,129,0.3)]' : 'bg-card border-white/10 text-muted hover:border-primary/50 hover:text-primary hover:bg-background'} ${pollVote !== null && pollVote !== false ? 'opacity-40 grayscale' : 'active:scale-95'}`}
               >
                 No, Keep it
               </button>
             </div>
-          </div>
+            </motion.div>
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Tomorrow's AI Menu */}
+          {activeTab === 'today' && (
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.4 }} className="glass-panel border-primary/30 rounded-3xl p-6 md:p-8 relative overflow-hidden flex flex-col justify-between">
+             <div className="absolute top-[-20%] right-[-10%] w-64 h-64 bg-primary/20 rounded-full blur-[60px] pointer-events-none" />
+             <div className="absolute bottom-[-10%] left-[-10%] w-40 h-40 bg-info/20 rounded-full blur-[50px] pointer-events-none" />
+             
+             <div className="relative z-10 w-full mb-6">
+               <div className="flex items-center gap-3 mb-6">
+                 <div className="p-2 bg-gradient-to-br from-primary to-primary-dark rounded-xl shadow-[0_0_15px_rgba(16,185,129,0.4)]"><Sparkles className="h-4 w-4 text-white" /></div>
+                 <div>
+                   <h3 className="text-[10px] font-bold text-primary-light uppercase tracking-widest">AI Predicted Menu</h3>
+                   <span className="text-xs text-muted font-medium">Tomorrow's optimization</span>
+                 </div>
+               </div>
+               
+               <h4 className="text-3xl md:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white to-white/70 mb-2 leading-tight">Palak Paneer &<br/>Mix Veg</h4>
+               <p className="text-sm text-primary font-medium mb-6 flex items-center gap-2"><ChevronRight className="h-4 w-4"/> Replacing standard Aloo Matar</p>
+               
+               <div className="glass-input rounded-2xl p-5 shadow-inner">
+                 <div className="flex justify-between items-center mb-3">
+                   <span className="text-[10px] text-muted uppercase font-bold tracking-widest flex items-center gap-1.5"><Sparkles className="h-3 w-3 text-primary"/> AI Confidence</span>
+                   <span className="text-sm font-black text-primary">92%</span>
+                 </div>
+                 <div className="w-full bg-card rounded-full h-1.5 mb-4 border border-white/5 overflow-hidden">
+                   <div className="bg-gradient-to-r from-primary-dark to-primary-light h-full w-[92%] shadow-[0_0_10px_rgba(16,185,129,0.8)] relative">
+                     <div className="absolute inset-0 bg-white/20 animate-pulse" />
+                   </div>
+                 </div>
+                 <p className="text-xs text-muted leading-relaxed">
+                   <strong>Reasoning:</strong> High student preference for Palak Paneer during mid-week. AI detected 30% lower attendance on Aloo Matar days historically based on past 3 months of data.
+                 </p>
+               </div>
+             </div>
+             
+             <div className="relative z-10 mt-auto">
+               <button onClick={() => setShowEmergency(true)} className="w-full py-4 bg-card border border-white/10 hover:border-warning/30 hover:bg-warning/5 rounded-xl text-sm font-bold text-muted hover:text-warning flex items-center justify-center gap-2 transition-all duration-300 group">
+                 <AlertTriangle className="h-4 w-4 group-hover:scale-110 transition-transform" /> Request Emergency Change
+               </button>
+             </div>
+            </motion.div>
+          )}
 
           {/* Redesigned Rating UI */}
-          <div className="bg-card border border-border rounded-3xl p-6 shadow-xl flex flex-col">
-            <h3 className="text-sm font-bold text-muted uppercase tracking-wider mb-4 border-b border-border pb-2">Rate Today's Menu</h3>
+          {activeTab === 'community' && (
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.5 }} className="glass-card rounded-3xl p-6 md:p-8 flex flex-col">
+            <h3 className="text-[10px] font-bold text-muted uppercase tracking-widest mb-6 flex items-center gap-2"><MessageSquare className="h-4 w-4" /> Rate Today's Menu</h3>
             
-            <div className="flex gap-3 mb-4">
-              <button onClick={() => setRating('up')} className={`flex-1 py-4 rounded-xl border-2 flex justify-center items-center gap-2 font-bold transition ${rating === 'up' ? 'bg-primary/20 border-primary text-primary shadow-[0_0_20px_-5px_rgba(34,197,94,0.3)]' : 'bg-background border-border text-muted hover:border-primary/50'}`}>
-                <ThumbsUp className="h-6 w-6" /> Loved it
+            <div className="flex gap-3 mb-6">
+              <button onClick={() => setRating('up')} className={`flex-1 py-5 rounded-2xl border flex flex-col justify-center items-center gap-3 font-bold transition-all duration-300 ${rating === 'up' ? 'bg-primary/10 border-primary/50 text-primary shadow-[0_0_20px_-5px_rgba(16,185,129,0.3)]' : 'bg-background/40 border-white/10 text-muted hover:border-primary/30 hover:bg-card'}`}>
+                <div className={`p-3 rounded-full ${rating === 'up' ? 'bg-primary/20' : 'bg-card'}`}><ThumbsUp className="h-6 w-6" /></div>
+                <span className="text-sm">Loved it</span>
               </button>
-              <button onClick={() => setRating('down')} className={`flex-1 py-4 rounded-xl border-2 flex justify-center items-center gap-2 font-bold transition ${rating === 'down' ? 'bg-danger/20 border-danger text-danger shadow-[0_0_20px_-5px_rgba(239,68,68,0.2)]' : 'bg-background border-border text-muted hover:border-danger/50'}`}>
-                <ThumbsDown className="h-6 w-6" /> Disliked it
+              <button onClick={() => setRating('down')} className={`flex-1 py-5 rounded-2xl border flex flex-col justify-center items-center gap-3 font-bold transition-all duration-300 ${rating === 'down' ? 'bg-danger/10 border-danger/50 text-danger shadow-[0_0_20px_-5px_rgba(244,63,94,0.2)]' : 'bg-background/40 border-white/10 text-muted hover:border-danger/30 hover:bg-card'}`}>
+                <div className={`p-3 rounded-full ${rating === 'down' ? 'bg-danger/20' : 'bg-card'}`}><ThumbsDown className="h-6 w-6" /></div>
+                <span className="text-sm">Disliked it</span>
               </button>
             </div>
             
-            <div className="relative mb-4">
-              <MessageSquare className="absolute left-3 top-3 h-5 w-5 text-muted" />
+            <div className="relative mb-6 flex-1 flex flex-col">
+              <MessageSquare className="absolute left-4 top-4 h-5 w-5 text-muted pointer-events-none" />
               <textarea 
                 value={comment}
                 onChange={(e) => setComment(e.target.value)}
                 placeholder="Any suggestions? (e.g. Too spicy, need more paneer)" 
-                className="w-full bg-background border border-border rounded-xl pl-10 pr-4 py-3 text-sm text-white focus:outline-none focus:border-primary min-h-[80px]"
+                className="w-full flex-1 glass-input rounded-2xl pl-12 pr-4 py-4 text-sm text-white focus:outline-none placeholder:text-muted/60 resize-none min-h-[100px]"
               />
             </div>
             
-            <button onClick={submitFeedback} className="w-full py-3 bg-white text-background font-black rounded-xl text-sm flex items-center justify-center gap-2 hover:bg-slate-200 transition mt-auto shadow-lg">
+            <button onClick={submitFeedback} className="w-full py-4 bg-white hover:bg-slate-200 text-background font-black rounded-xl text-sm flex items-center justify-center gap-2 transition-all duration-300 shadow-[0_0_20px_rgba(255,255,255,0.1)] active:scale-[0.98]">
               Submit Feedback <Send className="h-4 w-4" />
             </button>
+            </motion.div>
+          )}
+        </div>
+
+        {/* Eco Leaderboard */}
+        {activeTab === 'community' && (
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.2 }} className="glass-card rounded-3xl p-6 md:p-8 mt-8 relative overflow-hidden">
+          <div className="absolute top-0 right-0 p-6 pointer-events-none">
+            <Leaf className="h-24 w-24 text-primary/5 -rotate-12" />
           </div>
-        </div>
-
-        {/* Tomorrow's AI Menu */}
-        <div className="bg-gradient-to-br from-card to-background border border-primary/30 rounded-3xl p-6 relative overflow-hidden shadow-xl flex flex-col md:flex-row items-center gap-8">
-           <div className="absolute top-0 right-0 w-64 h-64 bg-primary/10 rounded-full blur-[60px]" />
-           
-           <div className="flex-1 relative z-10 w-full">
-             <div className="flex items-center gap-2 mb-4 border-b border-border pb-4">
-               <div className="p-1.5 bg-primary rounded-lg shadow-lg shadow-primary/30"><Sparkles className="h-4 w-4 text-white" /></div>
-               <h3 className="text-sm font-bold text-white uppercase tracking-wider">AI Predicted Menu</h3>
-               <span className="ml-auto px-2 py-1 bg-card border border-border rounded text-[10px] text-muted font-bold">Tomorrow</span>
-             </div>
-             
-             <h4 className="text-3xl font-black text-white mb-1 leading-tight">Palak Paneer & Mix Veg</h4>
-             <p className="text-sm text-primary font-medium mb-4">Replacing standard Aloo Matar</p>
-             
-             <div className="bg-background/80 backdrop-blur border border-border rounded-xl p-4 shadow-inner">
-               <div className="flex justify-between items-center mb-2">
-                 <span className="text-[10px] text-muted uppercase font-bold tracking-wider">AI Confidence</span>
-                 <span className="text-xs font-black text-primary">92%</span>
-               </div>
-               <div className="w-full bg-card rounded-full h-1.5 mb-3">
-                 <div className="bg-primary h-1.5 rounded-full w-[92%] shadow-[0_0_10px_0_rgba(34,197,94,0.5)]"></div>
-               </div>
-               <p className="text-xs text-muted leading-relaxed">
-                 <strong>Reasoning:</strong> High student preference for Palak Paneer during mid-week. AI detected 30% lower attendance on Aloo Matar days historically.
-               </p>
-             </div>
-           </div>
-           
-           <div className="w-full md:w-auto relative z-10">
-             <button onClick={() => setShowEmergency(true)} className="w-full md:w-auto py-4 px-6 bg-background border border-border rounded-xl text-sm font-bold text-warning flex items-center justify-center gap-2 hover:bg-card transition shadow-sm">
-               <AlertTriangle className="h-5 w-5" /> Request Emergency Change
-             </button>
-           </div>
-        </div>
-
+          <h3 className="text-xl font-black text-white mb-6 flex items-center gap-2"><Sparkles className="h-5 w-5 text-primary" /> Top Eco Warriors</h3>
+          
+          <motion.div 
+            className="space-y-3"
+            initial="hidden"
+            animate="visible"
+            variants={{
+              hidden: { opacity: 0 },
+              visible: {
+                opacity: 1,
+                transition: { staggerChildren: 0.1 }
+              }
+            }}
+          >
+            {leaderboard.map((lbUser, index) => (
+              <motion.div 
+                key={index} 
+                variants={{
+                  hidden: { opacity: 0, x: -20 },
+                  visible: { opacity: 1, x: 0, transition: { type: "spring", stiffness: 300, damping: 24 } }
+                }}
+                whileHover={{ scale: 1.02, x: 5 }}
+                className="group flex items-center justify-between p-4 bg-background/40 rounded-2xl border border-white/5 hover:border-primary/30 hover:bg-primary/5 transition-all cursor-pointer relative overflow-hidden"
+              >
+                {/* Glow effect on hover */}
+                <div className="absolute inset-0 bg-gradient-to-r from-primary/0 via-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                
+                <div className="flex items-center gap-4 relative z-10">
+                  {index === 0 && (
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center font-black text-sm bg-warning/20 text-warning shadow-[0_0_15px_rgba(245,158,11,0.5)] border border-warning/50">
+                      🥇
+                    </div>
+                  )}
+                  {index === 1 && (
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center font-black text-sm bg-slate-300/20 text-slate-300 border border-slate-300/50">
+                      🥈
+                    </div>
+                  )}
+                  {index === 2 && (
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center font-black text-sm bg-amber-700/20 text-amber-500 border border-amber-700/50">
+                      🥉
+                    </div>
+                  )}
+                  {index > 2 && (
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-xs bg-white/5 text-muted">
+                      {index + 1}
+                    </div>
+                  )}
+                  <div>
+                    <h4 className="text-sm font-bold text-white group-hover:text-primary transition-colors flex items-center gap-2">
+                      {lbUser.name}
+                      {index === 0 && <span className="text-[10px] bg-warning/20 text-warning px-2 py-0.5 rounded-full border border-warning/30 hidden sm:inline-block">The Savior</span>}
+                      {index === 1 && <span className="text-[10px] bg-slate-300/20 text-slate-300 px-2 py-0.5 rounded-full border border-slate-300/30 hidden sm:inline-block">Waste Warrior</span>}
+                      {index === 2 && <span className="text-[10px] bg-amber-700/20 text-amber-500 px-2 py-0.5 rounded-full border border-amber-700/30 hidden sm:inline-block">Eco Guardian</span>}
+                    </h4>
+                    <span className="text-[10px] text-muted uppercase tracking-widest">{lbUser.mealsEaten} meals • {lbUser.wasteAvoidedKg}kg saved</span>
+                  </div>
+                </div>
+                <div className="text-right relative z-10">
+                  <div className="text-lg font-black text-primary drop-shadow-[0_0_8px_rgba(16,185,129,0.5)]">{lbUser.ecoPoints}</div>
+                  <div className="text-[10px] text-primary-light uppercase tracking-widest font-bold">Points</div>
+                </div>
+              </motion.div>
+            ))}
+            {leaderboard.length === 0 && (
+              <p className="text-muted text-sm text-center py-4">No eco warriors yet. Be the first!</p>
+            )}
+          </motion.div>
+          </motion.div>
+        )}
       </main>
 
       {/* Emergency Modal */}
       <AnimatePresence>
         {showEmergency && (
-          <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
-            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="bg-card border border-border p-6 rounded-3xl w-full max-w-md shadow-2xl">
-              <div className="flex justify-between items-center mb-4">
-                <h2 className="text-xl font-bold text-white">Emergency Request</h2>
-                <button onClick={() => setShowEmergency(false)} className="p-1 text-muted hover:text-white rounded-full"><XCircle className="h-6 w-6" /></button>
+          <div className="fixed inset-0 bg-background/80 z-50 flex items-center justify-center p-4 backdrop-blur-md">
+            <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }} className="glass-panel border-white/10 p-8 rounded-3xl w-full max-w-md shadow-2xl relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-warning/10 rounded-full blur-[40px] pointer-events-none" />
+              
+              <div className="flex justify-between items-center mb-6 relative z-10">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-warning/20 rounded-xl text-warning"><AlertTriangle className="h-5 w-5" /></div>
+                  <h2 className="text-xl font-bold text-white">Emergency Request</h2>
+                </div>
+                <button onClick={() => setShowEmergency(false)} className="p-2 text-muted hover:text-white bg-card rounded-full border border-white/5 transition-colors"><XCircle className="h-5 w-5" /></button>
               </div>
-              <p className="text-sm text-muted mb-6">Need to change your attendance after the cutoff time? This requires Admin approval.</p>
+              
+              <p className="text-sm text-muted mb-6 relative z-10 leading-relaxed">Need to change your attendance after the auto-lock time? This requires manual Admin approval.</p>
+              
               <textarea 
                 value={emergencyReason}
                 onChange={(e) => setEmergencyReason(e.target.value)}
-                className="w-full bg-background border border-border rounded-xl p-4 text-sm text-white focus:outline-none focus:border-warning mb-6" 
+                className="w-full glass-input rounded-xl p-4 text-sm text-white focus:outline-none mb-6 relative z-10 resize-none placeholder:text-muted/60" 
                 placeholder="Reason for change... (e.g. Going home due to family emergency)" 
                 rows={4}
               ></textarea>
+              
               <button 
                 onClick={submitEmergency} 
-                className="w-full py-3 bg-warning text-background rounded-xl text-sm font-black flex justify-center items-center gap-2 hover:bg-yellow-500 transition shadow-lg"
+                className="w-full py-4 bg-warning hover:bg-yellow-500 text-background rounded-xl text-sm font-black flex justify-center items-center gap-2 transition-all duration-300 shadow-[0_0_20px_-5px_rgba(245,158,11,0.4)] active:scale-[0.98] relative z-10"
               >
                 Submit Request
               </button>

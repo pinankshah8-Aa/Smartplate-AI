@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Sparkles, User, ShieldAlert, ArrowRight, UserPlus } from 'lucide-react';
+import { Sparkles, User, ShieldAlert, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -18,6 +18,21 @@ export default function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Manual validation to avoid silent HTML5 block on mobile
+    if (!username.trim() || !password.trim()) {
+      toast.error("Please fill in your username and password");
+      return;
+    }
+    if (!isLogin && !name.trim()) {
+      toast.error("Please provide your full name");
+      return;
+    }
+    if (!isLogin && role === 'admin' && !secretKey.trim()) {
+      toast.error("Admin secret key is required");
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -26,21 +41,36 @@ export default function LoginPage() {
       
       const res = await fetch(endpoint, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Bypass-Tunnel-Reminder': 'true'
+        },
         body: JSON.stringify(body)
       });
       const data = await res.json();
 
       if (data.success) {
         if (isLogin) {
-          localStorage.setItem('smartplate_token', data.token);
-          localStorage.setItem('smartplate_user', JSON.stringify(data.user));
           toast.success(`Welcome back, ${data.user.name}!`);
           router.push(data.user.role === 'admin' ? '/admin' : '/student');
         } else {
-          toast.success("Account created successfully! Please log in.");
-          setIsLogin(true);
-          setPassword('');
+          toast.success("Account created successfully! Logging you in...");
+          // Auto-login after sign up
+          const loginRes = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: { 
+              'Content-Type': 'application/json',
+              'Bypass-Tunnel-Reminder': 'true'
+            },
+            body: JSON.stringify({ username, password })
+          });
+          const loginData = await loginRes.json();
+          if (loginData.success) {
+            router.push(loginData.user.role === 'admin' ? '/admin' : '/student');
+          } else {
+            setIsLogin(true);
+            setPassword('');
+          }
         }
       } else {
         toast.error(data.error || "An error occurred");
@@ -52,150 +82,182 @@ export default function LoginPage() {
     }
   };
 
-  const autofill = (u: string, p: string) => {
-    setIsLogin(true);
-    setUsername(u);
-    setPassword(p);
+  // Animation variants
+  const containerVariants: any = {
+    hidden: { opacity: 1 },
+    visible: { 
+      opacity: 1,
+      transition: { staggerChildren: 0.1, delayChildren: 0.2 }
+    }
+  };
+  
+  const itemVariants: any = {
+    hidden: { y: 20, opacity: 1 },
+    visible: { y: 0, opacity: 1, transition: { type: "spring", stiffness: 300, damping: 24 } }
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col md:flex-row">
-      {/* Left Hero Section */}
-      <div className="flex-1 bg-card border-r border-border p-12 flex flex-col justify-center relative overflow-hidden">
-        <div className="absolute top-[-20%] left-[-20%] w-[140%] h-[140%] bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-primary/20 via-background to-background opacity-40 z-0"></div>
-        
-        <div className="relative z-10 max-w-lg mx-auto md:mx-0">
-          <div className="flex items-center gap-2 mb-8">
-            <div className="p-3 bg-primary rounded-xl shadow-lg shadow-primary/20">
-              <Sparkles className="h-8 w-8 text-white" />
-            </div>
-            <span className="text-2xl font-black tracking-tight text-white">SmartPlate AI</span>
-          </div>
-          
-          <h1 className="text-5xl font-black mb-6 leading-tight text-white">
-            Predict. Vote. Save.
-          </h1>
-          <p className="text-xl text-primary font-bold mb-6">
-            AI that stops PG food wastage. (100% Pure Veg)
-          </p>
-          <p className="text-muted text-lg mb-10 leading-relaxed">
-            In a college PG, lunch is packed daily assuming full attendance. But many students skip college, leading to massive food waste. SmartPlate AI lets students mark attendance, vote on menus, and uses AI to predict exact food quantities needed.
-          </p>
+    <div className="min-h-screen bg-background flex flex-col md:flex-row relative overflow-x-hidden selection:bg-primary/30 w-full">
+      
+      {/* Animated Background Elements */}
+      <div className="absolute top-0 left-[-10%] w-[50%] h-[50%] bg-primary/20 rounded-full mix-blend-screen filter blur-[120px] animate-blob z-0" />
+      <div className="absolute top-[-10%] right-[-10%] w-[40%] h-[40%] bg-info/20 rounded-full mix-blend-screen filter blur-[120px] animate-blob animation-delay-2000 z-0" />
+      <div className="absolute bottom-[-20%] left-[20%] w-[60%] h-[60%] bg-primary/10 rounded-full mix-blend-screen filter blur-[120px] animate-blob animation-delay-4000 z-0" />
 
-          <div className="grid grid-cols-2 gap-6">
-            <div className="bg-background/50 border border-border p-4 rounded-2xl flex flex-col">
-              <span className="block text-3xl font-black text-white mb-1">55</span>
-              <span className="text-xs text-muted uppercase font-bold tracking-wider">Total Students</span>
-            </div>
-            <div className="bg-primary/10 border border-primary/20 p-4 rounded-2xl flex flex-col shadow-[0_0_15px_-3px_rgba(34,197,94,0.15)]">
-              <span className="block text-3xl font-black text-primary mb-1">₹18k</span>
-              <span className="text-xs text-primary uppercase font-bold tracking-wider">Monthly Savings Potential</span>
-            </div>
-          </div>
+      <div className="w-full max-w-[1920px] mx-auto flex flex-col md:flex-row relative z-10 flex-1">
+        {/* Left Hero Section */}
+        <div className="flex-1 p-6 sm:p-10 md:p-16 flex flex-col justify-center relative z-10">
+          <motion.div 
+            variants={containerVariants}
+            initial="hidden"
+            animate="visible"
+            className="max-w-lg mx-auto md:mx-0 lg:ml-12 xl:ml-24"
+          >
+            <motion.div variants={itemVariants} className="flex items-center gap-3 mb-10">
+              <div className="relative">
+                <div className="absolute inset-0 bg-primary blur-md opacity-50 rounded-xl" />
+                <div className="relative p-3 bg-gradient-to-br from-primary to-primary-dark rounded-xl border border-white/20">
+                  <Sparkles className="h-8 w-8 text-white" />
+                </div>
+              </div>
+              <span className="text-3xl font-black tracking-tight text-white drop-shadow-md">SmartPlate AI</span>
+            </motion.div>
+            
+            <motion.h1 variants={itemVariants} className="text-5xl md:text-6xl font-black mb-6 leading-[1.1] text-transparent bg-clip-text bg-gradient-to-r from-white via-white to-white/60">
+              Predict.<br/>Vote.<br/><span className="text-primary drop-shadow-[0_0_15px_rgba(16,185,129,0.3)]">Save.</span>
+            </motion.h1>
+            
+            <motion.p variants={itemVariants} className="text-xl text-primary-light font-medium mb-6">
+              AI that stops PG food wastage. (100% Pure Veg)
+            </motion.p>
+            
+            <motion.p variants={itemVariants} className="text-muted text-lg mb-10 leading-relaxed max-w-md">
+              In a college PG, lunch is packed daily assuming full attendance. But many students skip college, leading to massive food waste. SmartPlate AI lets students mark attendance, vote on menus, and uses AI to predict exact food quantities needed.
+            </motion.p>
+
+            <motion.div variants={itemVariants} className="grid grid-cols-2 gap-4 max-w-sm">
+              <div className="glass-panel p-5 rounded-2xl flex flex-col relative overflow-hidden group">
+                <div className="absolute inset-0 bg-gradient-to-tr from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                <span className="block text-4xl font-black text-white mb-1 drop-shadow-sm">55</span>
+                <span className="text-[10px] text-muted uppercase font-bold tracking-widest">Total Students</span>
+              </div>
+              <div className="glass-panel border-primary/30 bg-primary/5 p-5 rounded-2xl flex flex-col relative overflow-hidden group shadow-[0_0_20px_-5px_rgba(16,185,129,0.2)]">
+                <div className="absolute inset-0 bg-gradient-to-tr from-primary/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                <span className="block text-4xl font-black text-primary mb-1 drop-shadow-[0_2px_4px_rgba(16,185,129,0.3)]">₹18k</span>
+                <span className="text-[10px] text-primary uppercase font-bold tracking-widest">Monthly Savings</span>
+              </div>
+            </motion.div>
+          </motion.div>
         </div>
-      </div>
 
-      {/* Right Login/Signup Section */}
-      <div className="w-full md:w-[450px] bg-background p-12 flex flex-col justify-center border-t md:border-t-0 border-border z-10 overflow-y-auto">
-        <h2 className="text-3xl font-bold text-white mb-2">{isLogin ? 'Welcome Back' : 'Create Account'}</h2>
-        <p className="text-muted mb-8 text-sm">
-          {isLogin ? 'Please log in to your account or use the demo credentials.' : 'Sign up to start saving food.'}
-        </p>
+        {/* Right Login/Signup Section */}
+        <div className="w-full md:w-[500px] xl:w-[600px] p-6 sm:p-10 md:p-12 flex flex-col justify-center relative z-10">
+          <motion.div 
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.6, delay: 0.2 }}
+            className="glass-panel p-6 sm:p-8 md:p-10 rounded-3xl w-full max-w-md mx-auto shadow-2xl relative"
+          >
+            <h2 className="text-3xl font-bold text-white mb-2 tracking-tight">{isLogin ? 'Welcome Back' : 'Create Account'}</h2>
+            <p className="text-muted mb-8 text-sm">
+              {isLogin ? 'Log in to your account or use the demo credentials below.' : 'Sign up to start saving food today.'}
+            </p>
 
-        <form onSubmit={handleSubmit} className="space-y-5">
-          {!isLogin && (
-            <>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <AnimatePresence mode="popLayout">
+                {!isLogin && (
+                  <motion.div 
+                    initial={{ opacity: 1, height: 'auto' }} 
+                    animate={{ opacity: 1, height: 'auto' }} 
+                    exit={{ opacity: 0, height: 0 }}
+                    className="space-y-4 overflow-hidden"
+                  >
+                    <div>
+                      <label className="block text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">Full Name</label>
+                      <input
+                        type="text"
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        placeholder="Enter your name"
+                        className="w-full px-4 py-3.5 glass-input rounded-xl text-sm text-white placeholder:text-muted/60"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">Role</label>
+                      <div className="relative">
+                        <select 
+                          value={role} 
+                          onChange={(e) => setRole(e.target.value)} 
+                          className="w-full px-4 py-3.5 glass-input rounded-xl text-sm text-white appearance-none"
+                        >
+                          <option value="student" className="bg-card">Student</option>
+                          <option value="admin" className="bg-card">Admin</option>
+                        </select>
+                        <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none">
+                          <ArrowRight className="h-4 w-4 text-muted rotate-90" />
+                        </div>
+                      </div>
+                    </div>
+                    {role === 'admin' && (
+                      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="relative">
+                        <label className="block text-[10px] font-bold text-warning uppercase tracking-widest mb-1.5 ml-1 flex items-center gap-1">
+                          <ShieldAlert className="h-3 w-3" /> Admin Secret Key
+                        </label>
+                        <input
+                          type="password"
+                          value={secretKey}
+                          onChange={(e) => setSecretKey(e.target.value)}
+                          placeholder="Required for admin"
+                          className="w-full px-4 py-3.5 glass-input border-warning/30 focus:border-warning/50 rounded-xl text-sm text-white placeholder:text-muted/60"
+                        />
+                      </motion.div>
+                    )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
               <div>
-                <label className="block text-xs font-bold text-muted uppercase tracking-wider mb-2">Full Name</label>
+                <label className="block text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">Username</label>
                 <input
                   type="text"
-                  required
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Enter your name"
-                  className="w-full px-4 py-4 bg-card border border-border rounded-xl text-sm text-white focus:outline-none focus:border-primary"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="Enter username"
+                  className="w-full px-4 py-3.5 glass-input rounded-xl text-sm text-white placeholder:text-muted/60"
                 />
               </div>
+
               <div>
-                <label className="block text-xs font-bold text-muted uppercase tracking-wider mb-2">Role</label>
-                <select value={role} onChange={(e) => setRole(e.target.value)} className="w-full px-4 py-4 bg-card border border-border rounded-xl text-sm text-white focus:outline-none focus:border-primary">
-                  <option value="student">Student</option>
-                  <option value="admin">Admin</option>
-                </select>
+                <label className="block text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">Password</label>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Enter password"
+                  className="w-full px-4 py-3.5 glass-input rounded-xl text-sm text-white placeholder:text-muted/60"
+                />
               </div>
-              {role === 'admin' && (
-                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}>
-                  <label className="block text-xs font-bold text-warning uppercase tracking-wider mb-2">Admin Secret Key</label>
-                  <input
-                    type="password"
-                    required
-                    value={secretKey}
-                    onChange={(e) => setSecretKey(e.target.value)}
-                    placeholder="Enter admin secret key"
-                    className="w-full px-4 py-4 bg-warning/5 border border-warning/30 rounded-xl text-sm text-white focus:outline-none focus:border-warning"
-                  />
-                </motion.div>
-              )}
-            </>
-          )}
 
-          <div>
-            <label className="block text-xs font-bold text-muted uppercase tracking-wider mb-2">Username</label>
-            <div className="relative">
-              <User className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted" />
-              <input
-                type="text"
-                required
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                placeholder="Enter username"
-                className="w-full pl-12 pr-4 py-4 bg-card border border-border rounded-xl text-sm text-white focus:outline-none focus:border-primary"
-              />
-            </div>
-          </div>
-          <div>
-            <label className="block text-xs font-bold text-muted uppercase tracking-wider mb-2">Password</label>
-            <div className="relative">
-              <ShieldAlert className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted" />
-              <input
-                type="password"
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter password"
-                className="w-full pl-12 pr-4 py-4 bg-card border border-border rounded-xl text-sm text-white focus:outline-none focus:border-primary"
-              />
-            </div>
-          </div>
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full py-4 bg-primary hover:bg-primary-dark text-white font-bold rounded-xl text-sm flex items-center justify-center gap-2 transition disabled:opacity-70 shadow-lg shadow-primary/20"
-          >
-            {loading ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" /> : <>{isLogin ? 'Sign In' : 'Sign Up'} <ArrowRight className="h-4 w-4" /></>}
-          </button>
-        </form>
-
-        <div className="mt-6 text-center">
-          <button onClick={() => setIsLogin(!isLogin)} className="text-sm text-primary font-bold hover:underline">
-            {isLogin ? 'Need an account? Sign Up' : 'Already have an account? Sign In'}
-          </button>
-        </div>
-
-        {isLogin && (
-          <div className="mt-10 pt-8 border-t border-border">
-            <p className="text-xs text-muted text-center mb-4 uppercase font-bold tracking-wider">Demo Quick Access</p>
-            <div className="grid grid-cols-2 gap-3">
-              <button onClick={() => autofill('student', 'student123')} className="p-3 text-xs bg-card border border-border rounded-xl text-slate-300 hover:border-primary hover:text-white font-semibold transition">
-                Student Login
+              <button 
+                type="submit" 
+                disabled={loading}
+                className="w-full py-4 bg-primary hover:bg-primary-light text-background font-black rounded-xl mt-6 shadow-[0_0_20px_-5px_rgba(16,185,129,0.5)] transition-all flex justify-center items-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed"
+              >
+                {loading ? <div className="w-5 h-5 border-2 border-background/30 border-t-background rounded-full animate-spin" /> : <>{isLogin ? 'Sign In' : 'Sign Up'} <ArrowRight className="h-4 w-4" /></>}
               </button>
-              <button onClick={() => autofill('admin', 'admin123')} className="p-3 text-xs bg-card border border-border rounded-xl text-slate-300 hover:border-primary hover:text-white font-semibold transition">
-                Admin Login
-              </button>
-            </div>
-          </div>
-        )}
+            </form>
 
+            <div className="mt-8 text-center">
+              <p className="text-xs text-muted">
+                {isLogin ? "Don't have an account?" : "Already have an account?"}{' '}
+                <button type="button" onClick={() => setIsLogin(!isLogin)} className="text-primary font-bold hover:underline transition-all">
+                  {isLogin ? 'Sign Up' : 'Log In'}
+                </button>
+              </p>
+            </div>
+
+        </motion.div>
+      </div>
       </div>
     </div>
   );

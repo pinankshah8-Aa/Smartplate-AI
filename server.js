@@ -16,6 +16,9 @@ app.prepare().then(() => {
   });
 
   const io = new Server(server, {
+    path: '/api/socket',
+    addTrailingSlash: false,
+    destroyUpgrade: false,
     cors: {
       origin: '*',
       methods: ['GET', 'POST']
@@ -56,8 +59,8 @@ app.prepare().then(() => {
     } catch(e){}
   }, 30000); // Check every 30 seconds
 
-  server.listen(port, (err) => {
+  server.listen(port, '0.0.0.0', (err) => {
     if (err) throw err;
-    console.log(`> Ready on http://localhost:${port}`);
+    console.log(`> Ready on http://0.0.0.0:${port} (Accessible on your local network)`);
   });
 });

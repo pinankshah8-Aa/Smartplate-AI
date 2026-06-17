@@ -1,14 +1,26 @@
 import { NextResponse } from 'next/server';
+import jwt from 'jsonwebtoken';
+import { z } from 'zod';
 import dbConnect from '@/lib/dbConnect';
 import Attendance from '@/models/Attendance';
 import User from '@/models/User';
 
+const JWT_SECRET = process.env.JWT_SECRET || 'hackathon_secret_123';
+
+const ScanSchema = z.object({
+  userId: z.string().min(1, 'QR Token is required') // the frontend passes the token under 'userId' key
+});
+
 export async function POST(req: Request) {
   try {
-    const { userId } = await req.json();
-    if (!userId) {
-      return NextResponse.json({ success: false, error: 'User ID is required' }, { status: 400 });
+    const body = await req.json();
+    const result = ScanSchema.safeParse(body);
+    
+    if (!result.success) {
+      return NextResponse.json({ success: false, error: 'Invalid QR Token format' }, { status: 400 });
     }
+
+    const userId = result.data.userId;
 
     await dbConnect();
 
@@ -59,6 +71,15 @@ export async function POST(req: Request) {
     attendance.collectedFood = true;
     attendance.collectedAt = new Date();
     await attendance.save();
+
+    // Emit socket event for real-time dashboard updates
+    if ((global as any).io) {
+      (global as any).io.emit('scan_update', {
+        userId: user._id,
+        studentName: user.name,
+        timestamp: formatIST(attendance.collectedAt)
+      });
+    }
 
     return NextResponse.json({ 
       success: true, 

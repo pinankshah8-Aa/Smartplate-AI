@@ -22,7 +22,8 @@ export async function POST(req: Request) {
       username,
       passwordHash: hash,
       name,
-      role: role || 'student'
+      role: role || 'student',
+      isApproved: role === 'admin'
     });
 
     return NextResponse.json({ success: true, message: 'User created successfully' });

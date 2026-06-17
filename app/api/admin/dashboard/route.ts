@@ -9,7 +9,8 @@ export async function GET() {
     await dbConnect();
     const dateString = getISTDateString();
 
-    const allStudents = await User.find({ role: 'student' }).lean();
+    const allStudents = await User.find({ role: 'student', isApproved: true }).lean();
+    const pendingStudents = await User.find({ role: 'student', isApproved: false }).lean();
     const total = allStudents.length;
     
     const attendances = await Attendance.find({ dateString }).lean();
@@ -46,7 +47,7 @@ export async function GET() {
       wasteReductionPct: total > 0 ? Math.round(((notGoingCount + pendingCount) / total) * 100) : 0
     };
 
-    return NextResponse.json({ success: true, stats, students: studentsWithStatus, wasteRiskStudents });
+    return NextResponse.json({ success: true, stats, students: studentsWithStatus, wasteRiskStudents, pendingStudents });
   } catch (error) {
     console.error(error);
     return NextResponse.json({ success: false, error: 'Server error' }, { status: 500 });

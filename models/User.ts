@@ -5,6 +5,7 @@ const UserSchema = new mongoose.Schema({
   passwordHash: { type: String, required: true },
   role: { type: String, enum: ['student', 'admin'], default: 'student' },
   name: { type: String, required: true },
+  isApproved: { type: Boolean, default: false },
   missedMeals: { type: Number, default: 0 },
   ecoPoints: { type: Number, default: 0 },
   mealsEaten: { type: Number, default: 0 },
