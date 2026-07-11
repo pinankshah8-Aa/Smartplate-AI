@@ -277,7 +277,7 @@ export default function StudentDashboard() {
 
   if (isLoading || !user) {
     return (
-      <div className="min-h-screen bg-background text-foreground pb-24 relative overflow-hidden">
+      <div className="min-h-[100dvh] bg-background text-foreground pb-8 relative overflow-hidden">
         <header className="glass-panel sticky top-0 z-40 border-b border-white/5 px-6 py-4">
           <div className="max-w-5xl mx-auto flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -304,12 +304,14 @@ export default function StudentDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground pb-20 overflow-x-hidden selection:bg-primary/30 w-full">
+    <div className="min-h-[100dvh] bg-background text-foreground pb-8 overflow-x-hidden selection:bg-primary/30 w-full">
       
       {/* Background Animated Elements */}
-      <div className="absolute top-0 left-0 w-full h-[300px] bg-gradient-to-b from-primary/10 to-transparent pointer-events-none" />
-      <div className="absolute top-[20%] right-[-10%] w-[50%] h-[50%] bg-primary/10 rounded-full mix-blend-screen blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-[-20%] left-[-10%] w-[50%] h-[50%] bg-info/10 rounded-full mix-blend-screen blur-[120px] pointer-events-none" />
+      <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
+        <div className="absolute top-0 left-0 w-full h-[300px] bg-gradient-to-b from-primary/10 to-transparent" />
+        <div className="absolute top-[20%] right-[-10%] w-[50%] h-[50%] bg-primary/10 rounded-full mix-blend-screen blur-[120px]" />
+        <div className="absolute bottom-[-20%] left-[-10%] w-[50%] h-[50%] bg-info/10 rounded-full mix-blend-screen blur-[120px]" />
+      </div>
 
       <header className="glass-panel sticky top-0 z-40 border-b border-white/5 px-4 sm:px-8 xl:px-12 py-4">
         <div className="w-full flex items-center justify-between">
@@ -512,7 +514,7 @@ export default function StudentDashboard() {
                const dayMenu = weeklyMenu.find(m => m.day === activeDayTab);
                if (!dayMenu || (!dayMenu.breakfast && !dayMenu.lunch && !dayMenu.dinner)) {
                  return (
-                   <div className="bg-background border border-border border-dashed rounded-3xl p-10 flex flex-col items-center justify-center h-full opacity-60">
+                   <div className="bg-background border border-border border-dashed rounded-3xl p-10 flex flex-col items-center justify-center opacity-60">
                      <CalendarCheck className="h-10 w-10 text-muted mb-3" />
                      <p className="text-muted font-bold text-sm">No menu planned for this day yet.</p>
                    </div>
@@ -520,11 +522,11 @@ export default function StudentDashboard() {
                }
 
                return (
-                 <div className="flex flex-col h-full">
+                 <div className="flex flex-col">
                    <h4 className="text-sm font-black text-foreground mb-4 capitalize flex items-center gap-2">
                      <CalendarDays className="h-4 w-4 text-primary" /> {activeDayTab === 'Mon' ? 'Monday' : activeDayTab === 'Tue' ? 'Tuesday' : activeDayTab === 'Wed' ? 'Wednesday' : activeDayTab === 'Thu' ? 'Thursday' : activeDayTab === 'Fri' ? 'Friday' : activeDayTab === 'Sat' ? 'Saturday' : 'Sunday'} Meal Plan
                    </h4>
-                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-auto">
+                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                      {['breakfast', 'lunch', 'dinner'].map((mealType) => {
                        const mealStr = dayMenu[mealType as keyof typeof dayMenu] as string;
                        const items = mealStr ? mealStr.split(',').map(s => s.trim()).filter(Boolean) : [];

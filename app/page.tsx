@@ -96,16 +96,17 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col md:flex-row relative overflow-x-hidden selection:bg-primary/30 w-full">
-      
+    <div className="min-h-[100dvh] bg-background flex flex-col relative overflow-x-hidden selection:bg-primary/30 w-full">
       {/* Animated Background Elements */}
-      <div className="absolute top-0 left-[-10%] w-[50%] h-[50%] bg-primary/20 rounded-full mix-blend-screen filter blur-[120px] animate-blob z-0" />
-      <div className="absolute top-[-10%] right-[-10%] w-[40%] h-[40%] bg-info/20 rounded-full mix-blend-screen filter blur-[120px] animate-blob animation-delay-2000 z-0" />
-      <div className="absolute bottom-[-20%] left-[20%] w-[60%] h-[60%] bg-primary/10 rounded-full mix-blend-screen filter blur-[120px] animate-blob animation-delay-4000 z-0" />
+      <div className="absolute inset-0 overflow-hidden pointer-events-none z-0">
+        <div className="absolute top-0 left-[-10%] w-[50%] h-[50%] bg-primary/20 rounded-full mix-blend-screen filter blur-[120px] animate-blob" />
+        <div className="absolute top-[-10%] right-[-10%] w-[40%] h-[40%] bg-info/20 rounded-full mix-blend-screen filter blur-[120px] animate-blob animation-delay-2000" />
+        <div className="absolute bottom-[-20%] left-[20%] w-[60%] h-[60%] bg-primary/10 rounded-full mix-blend-screen filter blur-[120px] animate-blob animation-delay-4000" />
+      </div>
 
       <div className="w-full max-w-[1920px] mx-auto flex flex-col md:flex-row relative z-10 flex-1">
         {/* Left Hero Section */}
-        <div className="flex-1 p-6 sm:p-10 md:p-16 flex flex-col justify-center relative z-10">
+        <div className="flex-1 p-6 md:px-12 md:py-8 flex flex-col justify-center relative z-10">
           <motion.div 
             variants={containerVariants}
             initial="hidden"
@@ -150,7 +151,7 @@ export default function LoginPage() {
         </div>
 
         {/* Right Login/Signup Section */}
-        <div className="w-full md:w-[500px] xl:w-[600px] p-6 sm:p-10 md:p-12 flex flex-col justify-center relative z-10">
+        <div className="w-full md:w-[500px] xl:w-[600px] p-6 md:px-10 md:py-8 flex flex-col justify-center relative z-10">
           <motion.div 
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}

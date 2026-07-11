@@ -353,7 +353,7 @@ export default function AdminDashboard() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background text-foreground pb-20">
+      <div className="min-h-[100dvh] bg-background text-foreground pb-8">
         <header className="bg-card border-b border-border sticky top-0 z-50">
           <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
             <div className="w-40 h-6 bg-white/10 animate-pulse rounded"></div>
@@ -373,7 +373,7 @@ export default function AdminDashboard() {
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground pb-20 overflow-x-hidden selection:bg-primary/30 w-full">
+    <div className="min-h-[100dvh] bg-background text-foreground pb-8 overflow-x-hidden selection:bg-primary/30 w-full">
       
       <header className="bg-card/80 backdrop-blur-xl border-b border-border sticky top-0 z-50 shadow-sm px-4 sm:px-8 xl:px-12">
         <div className="w-full h-16 flex items-center justify-between relative">
