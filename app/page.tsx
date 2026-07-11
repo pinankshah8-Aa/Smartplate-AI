@@ -12,8 +12,7 @@ export default function LoginPage() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
-  const [role, setRole] = useState('student');
-  const [secretKey, setSecretKey] = useState('');
+  const [institutionName, setInstitutionName] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -28,8 +27,8 @@ export default function LoginPage() {
       toast.error("Please provide your full name");
       return;
     }
-    if (!isLogin && role === 'admin' && !secretKey.trim()) {
-      toast.error("Admin secret key is required");
+    if (!isLogin && !institutionName.trim()) {
+      toast.error("Please provide your institution name");
       return;
     }
 
@@ -37,7 +36,7 @@ export default function LoginPage() {
 
     try {
       const endpoint = isLogin ? '/api/auth/login' : '/api/auth/signup';
-      const body = isLogin ? { username, password } : { username, password, name, role, secretKey };
+      const body = isLogin ? { username, password } : { username, password, name, institutionName };
       
       const res = await fetch(endpoint, {
         method: 'POST',
@@ -52,7 +51,7 @@ export default function LoginPage() {
       if (data.success) {
         if (isLogin) {
           toast.success(`Welcome back, ${data.user.name}!`);
-          router.push(data.user.role === 'admin' ? '/admin' : '/student');
+          router.push(data.user.role === 'student' ? '/student' : '/admin');
         } else {
           toast.success("Account created successfully! Logging you in...");
           // Auto-login after sign up
@@ -66,7 +65,7 @@ export default function LoginPage() {
           });
           const loginData = await loginRes.json();
           if (loginData.success) {
-            router.push(loginData.user.role === 'admin' ? '/admin' : '/student');
+            router.push(loginData.user.role === 'student' ? '/student' : '/admin');
           } else {
             setIsLogin(true);
             setPassword('');
@@ -132,7 +131,7 @@ export default function LoginPage() {
             </motion.p>
             
             <motion.p variants={itemVariants} className="text-muted text-lg mb-10 leading-relaxed max-w-md">
-              In a college PG, lunch is packed daily assuming full attendance. But many students skip college, leading to massive food waste. SmartPlate AI lets students mark attendance, vote on menus, and uses AI to predict exact food quantities needed.
+              In hostels and PGs, meals are prepared assuming full attendance. But many students skip meals, leading to massive food waste. SmartPlate AI lets students mark attendance, vote on menus, and uses AI to predict exact food quantities needed.
             </motion.p>
 
             <motion.div variants={itemVariants} className="grid grid-cols-2 gap-4 max-w-sm">
@@ -183,35 +182,15 @@ export default function LoginPage() {
                       />
                     </div>
                     <div>
-                      <label className="block text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">Role</label>
-                      <div className="relative">
-                        <select 
-                          value={role} 
-                          onChange={(e) => setRole(e.target.value)} 
-                          className="w-full px-4 py-3.5 glass-input rounded-xl text-sm text-white appearance-none"
-                        >
-                          <option value="student" className="bg-card">Student</option>
-                          <option value="admin" className="bg-card">Admin</option>
-                        </select>
-                        <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none">
-                          <ArrowRight className="h-4 w-4 text-muted rotate-90" />
-                        </div>
-                      </div>
+                      <label className="block text-[10px] font-bold text-muted uppercase tracking-widest mb-1.5 ml-1">College / Institution Name</label>
+                      <input
+                        type="text"
+                        value={institutionName}
+                        onChange={(e) => setInstitutionName(e.target.value)}
+                        placeholder="e.g., Global Hostel, City PG"
+                        className="w-full px-4 py-3.5 glass-input rounded-xl text-sm text-white placeholder:text-muted/60"
+                      />
                     </div>
-                    {role === 'admin' && (
-                      <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="relative">
-                        <label className="block text-[10px] font-bold text-warning uppercase tracking-widest mb-1.5 ml-1 flex items-center gap-1">
-                          <ShieldAlert className="h-3 w-3" /> Admin Secret Key
-                        </label>
-                        <input
-                          type="password"
-                          value={secretKey}
-                          onChange={(e) => setSecretKey(e.target.value)}
-                          placeholder="Required for admin"
-                          className="w-full px-4 py-3.5 glass-input border-warning/30 focus:border-warning/50 rounded-xl text-sm text-white placeholder:text-muted/60"
-                        />
-                      </motion.div>
-                    )}
                   </motion.div>
                 )}
               </AnimatePresence>

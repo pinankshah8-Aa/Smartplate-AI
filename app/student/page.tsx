@@ -404,8 +404,8 @@ export default function StudentDashboard() {
             </div>
           </div>
 
-          <h2 className="text-2xl md:text-3xl font-black text-white mb-2 mt-2">Going to college tomorrow?</h2>
-          <p className="text-muted text-sm md:text-base mb-8 max-w-xl">Your choice directly impacts food preparation. Help us predict exact quantities and completely eliminate PG food waste.</p>
+          <h2 className="text-2xl md:text-3xl font-black text-white mb-2 mt-2">Meal required tomorrow?</h2>
+          <p className="text-muted text-sm md:text-base mb-8 max-w-xl">Your choice directly impacts food preparation. Help us predict exact quantities and completely eliminate food waste.</p>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <button 
@@ -419,7 +419,7 @@ export default function StudentDashboard() {
               <div className={`p-3 rounded-full transition-colors duration-300 ${attendance === 'going' ? 'bg-primary text-white shadow-[0_0_15px_rgba(16,185,129,0.5)]' : 'bg-card border border-white/10 text-muted'}`}>
                 <CheckCircle className="h-6 w-6" />
               </div>
-              <span className={`font-black text-lg ${attendance === 'going' ? 'text-primary drop-shadow-[0_2px_4px_rgba(16,185,129,0.4)]' : 'text-white'}`}>Yes, I'm Going</span>
+              <span className={`font-black text-lg ${attendance === 'going' ? 'text-primary drop-shadow-[0_2px_4px_rgba(16,185,129,0.4)]' : 'text-white'}`}>Yes, Required</span>
             </button>
             
             <button 
@@ -433,7 +433,7 @@ export default function StudentDashboard() {
               <div className={`p-3 rounded-full transition-colors duration-300 ${attendance === 'not_going' ? 'bg-danger text-white shadow-[0_0_15px_rgba(244,63,94,0.5)]' : 'bg-card border border-white/10 text-muted'}`}>
                 <XCircle className="h-6 w-6" />
               </div>
-              <span className={`font-black text-lg ${attendance === 'not_going' ? 'text-danger drop-shadow-[0_2px_4px_rgba(244,63,94,0.4)]' : 'text-white'}`}>Not Going</span>
+              <span className={`font-black text-lg ${attendance === 'not_going' ? 'text-danger drop-shadow-[0_2px_4px_rgba(244,63,94,0.4)]' : 'text-white'}`}>Not Required</span>
             </button>
           </div>
 

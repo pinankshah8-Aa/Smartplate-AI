@@ -5,12 +5,8 @@ import User from '@/models/User';
 
 export async function POST(req: Request) {
   try {
-    const { username, password, name, role, secretKey } = await req.json();
+    const { username, password, name, institutionName } = await req.json();
     await dbConnect();
-
-    if (role === 'admin' && secretKey !== 'secret') {
-      return NextResponse.json({ success: false, error: 'Invalid admin secret key' }, { status: 401 });
-    }
 
     const existing = await User.findOne({ username });
     if (existing) {
@@ -22,8 +18,9 @@ export async function POST(req: Request) {
       username,
       passwordHash: hash,
       name,
-      role: role || 'student',
-      isApproved: role === 'admin'
+      role: 'student',
+      institutionName: institutionName || 'Demo Institution',
+      isApproved: true
     });
 
     return NextResponse.json({ success: true, message: 'User created successfully' });

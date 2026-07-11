@@ -38,10 +38,39 @@ export async function POST(req: Request) {
     const { username, password } = result.data;
     await dbConnect();
 
+    // Auto-seed/fix demo credentials on login attempt
+    if (username === 'admin') {
+      let adminDemo = await User.findOne({ username: 'admin' });
+      if (!adminDemo) {
+        adminDemo = new User({ username: 'admin', name: 'Admin Demo' });
+      }
+      adminDemo.passwordHash = await bcrypt.hash('admin123', 10);
+      adminDemo.role = 'owner';
+      adminDemo.isActive = true;
+      adminDemo.isApproved = true;
+      await adminDemo.save();
+    }
+    
+    if (username === 'student') {
+      let studentDemo = await User.findOne({ username: 'student' });
+      if (!studentDemo) {
+        studentDemo = new User({ username: 'student', name: 'Student Demo' });
+      }
+      studentDemo.passwordHash = await bcrypt.hash('student123', 10);
+      studentDemo.role = 'student';
+      studentDemo.isActive = true;
+      studentDemo.isApproved = true;
+      await studentDemo.save();
+    }
+
     let user = await User.findOne({ username });
 
     if (!user) {
       return NextResponse.json({ success: false, error: 'Invalid credentials' }, { status: 401 });
+    }
+
+    if (user.isActive === false) {
+      return NextResponse.json({ success: false, error: 'Account has been deactivated. Please contact your institution.' }, { status: 403 });
     }
 
     if (!user.isApproved && user.role === 'student') {

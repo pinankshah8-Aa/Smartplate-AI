@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { LogOut, Users, TrendingDown, IndianRupee, PieChart, Sparkles, AlertTriangle, Send, Check, X, Clock, AlertOctagon, UserCircle, PlayCircle, ThumbsUp, ThumbsDown, MessageSquare, Download, CalendarDays, Leaf } from 'lucide-react';
+import { LogOut, Users, TrendingDown, IndianRupee, PieChart, Sparkles, AlertTriangle, Send, Check, X, Clock, AlertOctagon, UserCircle, PlayCircle, ThumbsUp, ThumbsDown, MessageSquare, Download, CalendarDays, Leaf, ShieldAlert } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
 import { toast } from 'sonner';
@@ -17,7 +17,7 @@ export default function AdminDashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'overview' | 'menu' | 'operations' | 'students'>('overview');
   
-  const [stats, setStats] = useState({ total: 0, attending: 0, predictedWasteSavedKg: 0, moneySaved: 0, wasteReductionPct: 0, collectedCount: 0, pendingCollectionCount: 0 });
+  const [stats, setStats] = useState({ total: 0, attending: 0, predictedWasteSavedKg: 0, moneySaved: 0, wasteReductionPct: 0, collectedCount: 0, pendingCollectionCount: 0, institutions: [] as any[] });
   const [students, setStudents] = useState<any[]>([]);
   const [pendingStudents, setPendingStudents] = useState<any[]>([]);
   const [wasteRiskStudents, setWasteRiskStudents] = useState<any[]>([]);
@@ -25,6 +25,11 @@ export default function AdminDashboard() {
   const [feedback, setFeedback] = useState<any>(null);
   const [poll, setPoll] = useState<any>(null);
   const [analyticsData, setAnalyticsData] = useState<any[]>([]);
+  const [staff, setStaff] = useState<any[]>([]);
+  const [newStaffName, setNewStaffName] = useState('');
+  const [newStaffUsername, setNewStaffUsername] = useState('');
+  const [newStaffPassword, setNewStaffPassword] = useState('');
+  const [newStaffRole, setNewStaffRole] = useState('staff');
   
   const [cutoffTime, setCutoffTime] = useState('08:30');
   
@@ -41,7 +46,7 @@ export default function AdminDashboard() {
       try {
         const res = await fetch('/api/auth/me');
         const data = await res.json();
-        if (!data.success || data.user.role !== 'admin') {
+        if (!data.success || (data.user.role !== 'admin' && data.user.role !== 'owner' && data.user.role !== 'staff')) {
           router.push('/');
           return;
         }
@@ -57,11 +62,12 @@ export default function AdminDashboard() {
   const loadData = async () => {
     setIsLoading(true);
     try {
-      const [resDash, resConfig, resMenu, resAnalytics] = await Promise.all([
+      const [resDash, resConfig, resMenu, resAnalytics, resStaff] = await Promise.all([
         fetch('/api/admin/dashboard'),
         fetch('/api/admin/settings'),
         fetch(`/api/admin/menu?date=${menuDate}`),
-        fetch('/api/admin/analytics')
+        fetch('/api/admin/analytics'),
+        fetch('/api/admin/users/role')
       ]);
 
       const dataDash = await resDash.json();
@@ -94,6 +100,11 @@ export default function AdminDashboard() {
       const dataAnalytics = await resAnalytics.json();
       if (dataAnalytics.success && dataAnalytics.data) {
         setAnalyticsData(dataAnalytics.data);
+      }
+
+      const dataStaff = await resStaff.json();
+      if (dataStaff.success && dataStaff.staff) {
+        setStaff(dataStaff.staff);
       }
     } catch (e) {
       console.error(e);
@@ -167,7 +178,7 @@ export default function AdminDashboard() {
       const res = await fetch('/api/admin/auto-mark', { method: 'POST' });
       const data = await res.json();
       if (data.success) {
-        toast.success(`Marked ${data.count} pending students as 'Not Going'`);
+        toast.success(`Marked ${data.count} pending students as 'Not Required'`);
         loadData();
       } else {
         toast.error('Auto mark failed: ' + data.error);
@@ -201,6 +212,83 @@ export default function AdminDashboard() {
       const data = await res.json();
       if (data.success) {
         toast.success(action === 'approve' ? 'User approved successfully' : 'User rejected');
+        loadData();
+      } else {
+        toast.error(data.error || 'Action failed');
+      }
+    } catch (e) {
+      toast.error('Network error');
+    }
+  };
+
+  const handleStudentAction = async (userId: string, action: 'deactivate' | 'reactivate' | 'delete') => {
+    if (action === 'delete') {
+      if (!confirm('This will permanently delete the student account. This action cannot be undone. Are you sure?')) return;
+    } else {
+      if (!confirm(`Are you sure you want to ${action} this student?`)) return;
+    }
+    
+    try {
+      const res = await fetch('/api/admin/students', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, action })
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(`Student ${action}d successfully`);
+        loadData();
+      } else {
+        toast.error(data.error || 'Action failed');
+      }
+    } catch (e) {
+      toast.error('Network error');
+    }
+  };
+
+  const handleCreateStaff = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newStaffName || !newStaffUsername || !newStaffPassword) {
+      toast.error("Please fill in all fields");
+      return;
+    }
+    try {
+      const res = await fetch('/api/admin/users/role', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'create', username: newStaffUsername, password: newStaffPassword, name: newStaffName, role: newStaffRole })
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success("Staff account created successfully");
+        setNewStaffName('');
+        setNewStaffUsername('');
+        setNewStaffPassword('');
+        setNewStaffRole('staff');
+        loadData();
+      } else {
+        toast.error(data.error || 'Action failed');
+      }
+    } catch (e) {
+      toast.error('Network error');
+    }
+  };
+
+  const handleRoleAction = async (targetUsername: string, action: 'promote' | 'demote' | 'deactivate' | 'reactivate' | 'delete') => {
+    if (action === 'delete') {
+      if (!confirm(`WARNING: Are you sure you want to PERMANENTLY DELETE ${targetUsername}? This cannot be undone.`)) return;
+    } else {
+      if (!confirm(`Are you sure you want to ${action} ${targetUsername}?`)) return;
+    }
+    try {
+      const res = await fetch('/api/admin/users/role', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ targetUsername, action })
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(data.message || `Action ${action} successful`);
         loadData();
       } else {
         toast.error(data.error || 'Action failed');
@@ -276,7 +364,7 @@ export default function AdminDashboard() {
             <div className="bg-primary p-2 rounded-xl shadow-[0_0_15px_rgba(16,185,129,0.5)]">
               <Leaf className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
             </div>
-            <h1 className="text-lg sm:text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-primary to-primary-light hidden sm:block">SmartPlate AI <span className="text-muted text-sm font-medium ml-2">Manager</span></h1>
+            <h1 className="text-lg sm:text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-primary to-primary-light hidden sm:block">SmartPlate AI <span className="text-muted text-sm font-medium ml-2">{user?.role === 'owner' ? 'Owner' : user?.role === 'staff' ? 'Staff' : 'Manager'}</span></h1>
             <h1 className="text-lg sm:text-xl font-black text-primary sm:hidden">SmartPlate Admin</h1>
           </div>
           
@@ -363,6 +451,25 @@ export default function AdminDashboard() {
                 <span className="text-4xl font-black mt-auto relative z-10">{stats.wasteReductionPct}%</span>
               </motion.div>
             </motion.div>
+
+            {stats.institutions && stats.institutions.length > 0 && (
+              <motion.div initial={{opacity:0, y:20}} animate={{opacity:1, y:0}} transition={{delay:0.2}} className="glass-panel rounded-3xl p-6 md:p-8 mt-8 relative overflow-hidden">
+                <h3 className="text-sm font-bold flex items-center gap-2 mb-6"><Users className="h-5 w-5 text-primary" /> Institution Summary</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {stats.institutions.map((inst: any, idx: number) => (
+                    <div key={idx} className="bg-card border border-border p-5 rounded-2xl flex flex-col">
+                      <h4 className="font-bold text-md mb-3">{inst.name}</h4>
+                      <div className="space-y-2 text-sm text-muted">
+                        <div className="flex justify-between"><span>Active Students:</span> <span className="font-bold text-white">{inst.total}</span></div>
+                        <div className="flex justify-between"><span>Meals Required:</span> <span className="font-bold text-primary">{inst.required}</span></div>
+                        <div className="flex justify-between"><span>Collected:</span> <span className="font-bold text-white">{inst.collected}</span></div>
+                        <div className="flex justify-between"><span>Pending Collection:</span> <span className="font-bold text-warning">{inst.pending}</span></div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </motion.div>
+            )}
 
             <motion.div initial={{opacity:0, y:20}} animate={{opacity:1, y:0}} transition={{delay:0.25}} className="glass-panel rounded-3xl p-6 md:p-8 mt-8 relative overflow-hidden">
               <div className="flex justify-between items-center mb-6">
@@ -484,7 +591,7 @@ export default function AdminDashboard() {
               <motion.div initial={{opacity:0, y:20}} animate={{opacity:1, y:0}} transition={{delay:0.1}} className="glass-panel border-warning/30 bg-warning/5 rounded-3xl p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6">
                 <div>
                   <h3 className="text-sm font-bold text-warning flex items-center gap-2">Execute Auto-Mark</h3>
-                  <p className="text-xs text-warning/80 mt-2">Force all "Pending" students to "Not Going". Run this after Lock Time.</p>
+                  <p className="text-xs text-warning/80 mt-2">Force all "Pending" students to "Not Required". Run this after Lock Time.</p>
                 </div>
                 <button onClick={runAutoMark} disabled={isAutoMarking} className="px-6 py-3.5 bg-warning text-background hover:bg-yellow-500 text-sm font-black rounded-xl flex items-center gap-2 disabled:opacity-50">
                   {isAutoMarking ? <div className="w-4 h-4 border-2 border-background border-t-transparent rounded-full animate-spin" /> : <><PlayCircle className="h-4 w-4" /> Run Auto Mark Now</>}
@@ -548,6 +655,61 @@ export default function AdminDashboard() {
                   </div>
                 )}
               </motion.div>
+
+              <motion.div initial={{opacity:0, x:20}} animate={{opacity:1, x:0}} transition={{delay:0.5}} className="glass-panel border-info/30 rounded-3xl p-6 md:p-8">
+                <h2 className="font-black text-xl tracking-tight mb-6 flex items-center gap-2"><ShieldAlert className="h-5 w-5 text-info"/> Staff & Admin Management</h2>
+                <div className="space-y-4">
+                  {user?.role === 'owner' && (
+                    <form onSubmit={handleCreateStaff} className="mb-6 bg-card border border-border p-4 rounded-xl space-y-3">
+                      <h4 className="text-xs font-bold text-muted uppercase tracking-widest mb-2">Create New Account</h4>
+                      <input type="text" value={newStaffName} onChange={(e) => setNewStaffName(e.target.value)} placeholder="Full Name" className="w-full glass-input bg-background px-4 py-2 text-sm rounded-xl" />
+                      <input type="text" value={newStaffUsername} onChange={(e) => setNewStaffUsername(e.target.value)} placeholder="Username" className="w-full glass-input bg-background px-4 py-2 text-sm rounded-xl" />
+                      <input type="password" value={newStaffPassword} onChange={(e) => setNewStaffPassword(e.target.value)} placeholder="Password" className="w-full glass-input bg-background px-4 py-2 text-sm rounded-xl" />
+                      <select value={newStaffRole} onChange={(e) => setNewStaffRole(e.target.value)} className="w-full glass-input bg-background px-4 py-2 text-sm rounded-xl">
+                        <option value="staff">Staff</option>
+                        <option value="admin">Admin</option>
+                      </select>
+                      <button type="submit" className="w-full bg-info hover:bg-info/80 text-background font-bold px-4 py-2 rounded-xl text-xs transition-colors">Create Account</button>
+                    </form>
+                  )}
+                  
+                  {user?.role === 'owner' ? (
+                    <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
+                      {staff.map((st: any) => (
+                        <div key={st._id} className={`bg-card border ${st.isActive ? 'border-border' : 'border-danger/30 opacity-60'} p-3 rounded-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3`}>
+                          <div>
+                            <p className="text-sm font-bold flex items-center gap-2">
+                              {st.name} 
+                              {!st.isActive && <span className="px-1.5 py-0.5 bg-danger/10 text-danger text-[9px] uppercase font-bold rounded">Deactivated</span>}
+                              {st.role === 'owner' && <span className="px-1.5 py-0.5 bg-primary/10 text-primary text-[9px] uppercase font-bold rounded">Owner</span>}
+                            </p>
+                            <p className="text-[10px] text-muted font-bold uppercase tracking-wider">@{st.username} • {st.role}</p>
+                          </div>
+                          {st.role !== 'owner' && (
+                            <div className="flex flex-wrap gap-1.5">
+                              {st.role === 'staff' ? (
+                                <button onClick={() => handleRoleAction(st.username, 'promote')} className="px-2.5 py-1 bg-info/10 text-info hover:bg-info hover:text-white rounded-lg text-[9px] font-bold transition-colors">Promote</button>
+                              ) : (
+                                <button onClick={() => handleRoleAction(st.username, 'demote')} className="px-2.5 py-1 bg-warning/10 text-warning hover:bg-warning hover:text-white rounded-lg text-[9px] font-bold transition-colors">Demote</button>
+                              )}
+                              
+                              {st.isActive ? (
+                                <button onClick={() => handleRoleAction(st.username, 'deactivate')} className="px-2.5 py-1 bg-danger/10 text-danger hover:bg-danger hover:text-white rounded-lg text-[9px] font-bold transition-colors">Deactivate</button>
+                              ) : (
+                                <button onClick={() => handleRoleAction(st.username, 'reactivate')} className="px-2.5 py-1 bg-primary/10 text-primary hover:bg-primary hover:text-white rounded-lg text-[9px] font-bold transition-colors">Reactivate</button>
+                              )}
+                              
+                              <button onClick={() => handleRoleAction(st.username, 'delete')} className="px-2.5 py-1 bg-danger text-white hover:bg-danger/80 rounded-lg text-[9px] font-bold transition-colors">Delete</button>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted">You do not have permission to manage roles.</p>
+                  )}
+                </div>
+              </motion.div>
             </div>
           </div>
         )}
@@ -593,17 +755,20 @@ export default function AdminDashboard() {
                    <thead className="sticky top-0 bg-card z-10 border-b border-border">
                      <tr className="text-[10px] text-muted uppercase tracking-widest">
                        <th className="py-4 px-4 font-bold">Student Name</th>
+                       <th className="py-4 px-4 font-bold">Institution</th>
                        <th className="py-4 px-4 font-bold">Today's Status</th>
                        <th className="py-4 px-4 font-bold">Food Collected</th>
+                       <th className="py-4 px-4 font-bold text-right">Actions</th>
                      </tr>
                    </thead>
                    <tbody className="divide-y divide-border">
-                     {students.length === 0 ? <tr><td colSpan={3} className="py-8 text-center text-muted">No students found</td></tr> : students.map(s => (
+                     {students.filter(s => s.isActive).length === 0 ? <tr><td colSpan={5} className="py-8 text-center text-muted">No active students found</td></tr> : students.filter(s => s.isActive).map(s => (
                        <tr key={s.id} className="hover:bg-muted/10">
-                         <td className="py-4 px-4 font-medium">{s.name}</td>
+                         <td className="py-4 px-4 font-medium">{s.name} <br/><span className="text-[10px] text-muted">@{s.username}</span></td>
+                         <td className="py-4 px-4 text-muted text-xs">{s.institutionName}</td>
                          <td className="py-4 px-4">
-                           {s.status === 'going' && <span className="px-2.5 py-1 bg-primary/10 text-primary rounded-md text-[10px] uppercase font-bold">Going</span>}
-                           {s.status === 'not_going' && <span className="px-2.5 py-1 bg-danger/10 text-danger rounded-md text-[10px] uppercase font-bold">Not Going</span>}
+                           {s.status === 'going' && <span className="px-2.5 py-1 bg-primary/10 text-primary rounded-md text-[10px] uppercase font-bold">Required</span>}
+                           {s.status === 'not_going' && <span className="px-2.5 py-1 bg-danger/10 text-danger rounded-md text-[10px] uppercase font-bold">Not Required</span>}
                            {s.status === 'pending' && <span className="px-2.5 py-1 bg-card border border-border text-muted rounded-md text-[10px] uppercase font-bold">Pending</span>}
                          </td>
                          <td className="py-4 px-4">
@@ -611,10 +776,37 @@ export default function AdminDashboard() {
                              s.collectedFood ? <span className="text-primary font-bold text-xs"><Check className="h-3.5 w-3.5 inline"/> Collected</span> : <span className="text-warning font-bold text-xs"><Clock className="h-3.5 w-3.5 inline"/> Pending</span>
                            ) : <span className="text-muted text-xs">-</span>}
                          </td>
+                         <td className="py-4 px-4 text-right">
+                           <button onClick={() => handleStudentAction(s.id, 'deactivate')} className="px-3 py-1.5 bg-danger/10 text-danger hover:bg-danger hover:text-white rounded-lg text-[10px] font-bold transition-colors">Deactivate</button>
+                         </td>
                        </tr>
                      ))}
                    </tbody>
                  </table>
+
+                 {students.filter(s => !s.isActive).length > 0 && (
+                   <details className="mt-6">
+                     <summary className="text-xs font-bold text-muted cursor-pointer hover:text-white transition-colors">View Deactivated Students ({students.filter(s => !s.isActive).length})</summary>
+                     <div className="mt-4 border border-border rounded-xl overflow-hidden">
+                       <table className="w-full text-left text-sm border-collapse opacity-60">
+                         <tbody className="divide-y divide-border">
+                           {students.filter(s => !s.isActive).map(s => (
+                             <tr key={s.id} className="bg-card">
+                               <td className="py-3 px-4 font-medium">{s.name} <span className="text-[10px] text-muted ml-2">@{s.username}</span></td>
+                               <td className="py-3 px-4 text-muted text-xs">{s.institutionName}</td>
+                               <td className="py-3 px-4 text-right flex gap-2 justify-end">
+                                  <button onClick={() => handleStudentAction(s.id, 'reactivate')} className="px-3 py-1.5 bg-primary/10 text-primary hover:bg-primary hover:text-white rounded-lg text-[10px] font-bold transition-colors">Reactivate</button>
+                                  {user?.role === 'owner' && (
+                                    <button onClick={() => handleStudentAction(s.id, 'delete')} className="px-3 py-1.5 bg-danger/10 text-danger hover:bg-danger hover:text-white rounded-lg text-[10px] font-bold transition-colors">Delete Permanently</button>
+                                  )}
+                               </td>
+                             </tr>
+                           ))}
+                         </tbody>
+                       </table>
+                     </div>
+                   </details>
+                 )}
                </div>
             </motion.div>
           </div>
