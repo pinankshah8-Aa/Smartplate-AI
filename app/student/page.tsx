@@ -9,13 +9,13 @@ import QRCode from 'qrcode';
 import { ThemeToggle } from '@/components/ThemeToggle';
 
 const WEEKLY_MENU = [
-  { day: 'Mon', menu: 'Dal Makhani, Jeera Rice, Paneer Tikka, Roti, Salad' },
-  { day: 'Tue', menu: 'Aloo Gobi, Chana Masala, Plain Rice, Roti, Raita' },
-  { day: 'Wed', menu: 'Palak Paneer, Mix Veg, Pulao, Roti, Papad' },
-  { day: 'Thu', menu: 'Rajma Chawal, Bhindi Masala, Roti, Salad' },
-  { day: 'Fri', menu: 'Kadhai Paneer, Dal Tadka, Jeera Rice, Roti' },
-  { day: 'Sat', menu: 'Pav Bhaji, Veg Biryani, Boondi Raita, Gulab Jamun' },
-  { day: 'Sun', menu: 'Chole Bhature, Sweet Lassi, Salad' },
+  { day: 'Mon', breakfast: 'Poha, Jalebi, Tea', lunch: 'Dal Makhani, Jeera Rice, Paneer Tikka, Roti, Salad', dinner: 'Kadhai Paneer, Roti' },
+  { day: 'Tue', breakfast: 'Aloo Paratha, Curd, Pickle', lunch: 'Aloo Gobi, Chana Masala, Plain Rice, Roti, Raita', dinner: 'Mix Veg, Dal Tadka, Roti' },
+  { day: 'Wed', breakfast: 'Idli, Sambar, Coconut Chutney', lunch: 'Palak Paneer, Mix Veg, Pulao, Roti, Papad', dinner: 'Rajma Chawal, Salad' },
+  { day: 'Thu', breakfast: 'Puri Sabzi, Halwa', lunch: 'Rajma Chawal, Bhindi Masala, Roti, Salad', dinner: 'Malai Kofta, Naan' },
+  { day: 'Fri', breakfast: 'Upma, Tea, Biscuits', lunch: 'Kadhai Paneer, Dal Tadka, Jeera Rice, Roti', dinner: 'Chole Bhature, Sweet Lassi' },
+  { day: 'Sat', breakfast: 'Masala Dosa, Sambar', lunch: 'Pav Bhaji, Veg Biryani, Boondi Raita, Gulab Jamun', dinner: 'Aloo Tikki, Chole' },
+  { day: 'Sun', breakfast: 'Chole Bhature, Lassi', lunch: 'Paneer Butter Masala, Garlic Naan, Pulao, Salad', dinner: 'Dal Makhani, Jeera Rice' },
 ];
 
 export default function StudentDashboard() {
@@ -44,7 +44,7 @@ export default function StudentDashboard() {
 
   const [wasteRisk, setWasteRisk] = useState({ missedMeals: 0, isHighRisk: false });
   const [leaderboard, setLeaderboard] = useState<any[]>([]);
-  const [weeklyMenu, setWeeklyMenu] = useState<{day: string, menu: string}[]>(WEEKLY_MENU);
+  const [weeklyMenu, setWeeklyMenu] = useState<{day: string, breakfast?: string, lunch?: string, dinner?: string}[]>(WEEKLY_MENU);
 
   const [isLoading, setIsLoading] = useState(true);
 
@@ -113,16 +113,26 @@ export default function StudentDashboard() {
       const dataMenu = await resMenu.json();
       if (dataMenu.success && dataMenu.menus && dataMenu.menus.length > 0) {
         const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-        const formattedMenu = dataMenu.menus.map((m: any) => {
+        const updatedMenu = [...WEEKLY_MENU];
+        
+        dataMenu.menus.forEach((m: any) => {
           const d = new Date(m.dateString);
-          return {
-            day: days[d.getDay()],
-            menu: [m.breakfast, m.lunch, m.dinner].filter(Boolean).join(' | ') || 'Menu not set'
-          };
+          const dayStr = days[d.getDay()];
+          const idx = updatedMenu.findIndex(w => w.day === dayStr);
+          if (idx !== -1) {
+            updatedMenu[idx] = {
+              day: dayStr,
+              breakfast: m.breakfast || '',
+              lunch: m.lunch || '',
+              dinner: m.dinner || ''
+            };
+          }
         });
-        setWeeklyMenu(formattedMenu);
-        setActiveDayTab(formattedMenu[0]?.day || 'Mon');
+        setWeeklyMenu(updatedMenu);
       }
+      
+      const todayStr = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][new Date().getDay()];
+      setActiveDayTab(todayStr);
     } catch (e) {
       console.error(e);
     } finally {
@@ -484,24 +494,84 @@ export default function StudentDashboard() {
           {activeTab === 'menu' && (
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.2 }} className="glass-card rounded-3xl p-6 md:p-8 flex flex-col lg:col-span-2">
              <h3 className="text-[10px] font-bold text-muted uppercase tracking-widest mb-4 flex items-center gap-2">
-               <CalendarDays className="h-4 w-4 text-primary" /> Full Weekly Vegetarian Menu
+               <CalendarDays className="h-4 w-4 text-primary" /> Premium Weekly Menu Planner
              </h3>
-             <div className="flex gap-2 overflow-x-auto pb-4 scrollbar-hide mb-2 -mx-2 px-2">
+             <div className="flex gap-2 overflow-x-auto pb-4 scrollbar-hide mb-6 -mx-2 px-2 border-b border-border">
                {weeklyMenu.map((item) => (
                  <button 
                    key={item.day}
                    onClick={() => setActiveDayTab(item.day)}
-                   className={`px-5 py-2.5 rounded-full text-sm font-bold shrink-0 transition-all duration-300 ${activeDayTab === item.day ? 'bg-primary text-white shadow-[0_0_15px_-3px_rgba(16,185,129,0.4)] scale-105' : 'bg-card border border-white/5 text-muted hover:text-white hover:border-white/20 hover:bg-background'}`}
+                   className={`px-6 py-3 rounded-xl text-sm font-bold shrink-0 transition-all duration-300 flex items-center justify-center min-w-[80px] ${activeDayTab === item.day ? 'bg-primary text-white shadow-[0_4px_15px_-3px_rgba(34,197,94,0.4)] scale-105 relative z-10' : 'bg-card border border-white/5 text-muted hover:text-white hover:border-white/20 hover:bg-background'}`}
                  >
                    {item.day}
                  </button>
                ))}
              </div>
-             <div className="bg-background/60 border border-white/5 rounded-2xl p-6 min-h-[120px] flex items-center shadow-inner mt-auto">
-               <p className="text-lg text-white/90 font-medium leading-relaxed">
-                 {weeklyMenu.find(m => m.day === activeDayTab)?.menu}
-               </p>
-             </div>
+             
+             {(() => {
+               const dayMenu = weeklyMenu.find(m => m.day === activeDayTab);
+               if (!dayMenu || (!dayMenu.breakfast && !dayMenu.lunch && !dayMenu.dinner)) {
+                 return (
+                   <div className="bg-background border border-border border-dashed rounded-3xl p-10 flex flex-col items-center justify-center h-full opacity-60">
+                     <CalendarCheck className="h-10 w-10 text-muted mb-3" />
+                     <p className="text-muted font-bold text-sm">No menu planned for this day yet.</p>
+                   </div>
+                 );
+               }
+
+               return (
+                 <div className="flex flex-col h-full">
+                   <h4 className="text-sm font-black text-foreground mb-4 capitalize flex items-center gap-2">
+                     <CalendarDays className="h-4 w-4 text-primary" /> {activeDayTab === 'Mon' ? 'Monday' : activeDayTab === 'Tue' ? 'Tuesday' : activeDayTab === 'Wed' ? 'Wednesday' : activeDayTab === 'Thu' ? 'Thursday' : activeDayTab === 'Fri' ? 'Friday' : activeDayTab === 'Sat' ? 'Saturday' : 'Sunday'} Meal Plan
+                   </h4>
+                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-auto">
+                     {['breakfast', 'lunch', 'dinner'].map((mealType) => {
+                       const mealStr = dayMenu[mealType as keyof typeof dayMenu] as string;
+                       const items = mealStr ? mealStr.split(',').map(s => s.trim()).filter(Boolean) : [];
+                       
+                       let icon = <span className="text-xl">🌅</span>;
+                       let subtitle = 'Morning Meal';
+                       if (mealType === 'lunch') {
+                         icon = <span className="text-xl">☀️</span>;
+                         subtitle = 'Midday Meal';
+                       }
+                       if (mealType === 'dinner') {
+                         icon = <span className="text-xl">🌙</span>;
+                         subtitle = 'Evening Meal';
+                       }
+
+                     return (
+                       <div key={mealType} className="glass-card bg-background/50 border border-border rounded-2xl p-5 flex flex-col hover:border-primary/30 transition-all">
+                         <div className="flex items-center gap-3 mb-4 border-b border-border pb-3">
+                           <div className="h-10 w-10 bg-card rounded-xl flex items-center justify-center shadow-inner">
+                             {icon}
+                           </div>
+                           <div>
+                             <h4 className="font-black text-sm uppercase tracking-widest text-foreground capitalize">{mealType}</h4>
+                             <span className="text-[9px] text-muted font-bold uppercase tracking-widest block mt-0.5">{subtitle}</span>
+                           </div>
+                         </div>
+                         
+                         {items.length > 0 ? (
+                           <div className="flex flex-wrap gap-2">
+                             {items.map((item, idx) => (
+                               <span key={idx} className="px-3 py-1.5 bg-card border border-border rounded-lg text-xs font-medium text-muted-foreground shadow-sm hover:text-foreground hover:border-primary/50 transition-colors">
+                                 {item}
+                               </span>
+                             ))}
+                           </div>
+                         ) : (
+                           <div className="flex-1 flex items-center justify-center opacity-50 py-6">
+                             <p className="text-xs text-muted font-medium">Menu not set yet</p>
+                           </div>
+                         )}
+                       </div>
+                     );
+                   })}
+                   </div>
+                 </div>
+               );
+             })()}
             </motion.div>
           )}
 

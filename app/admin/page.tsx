@@ -10,6 +10,16 @@ import { Parser } from 'json2csv';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import QRScanner from '@/components/QRScanner';
 
+const WEEKLY_MENU = [
+  { day: 'Mon', breakfast: 'Poha, Jalebi, Tea', lunch: 'Dal Makhani, Jeera Rice, Paneer Tikka, Roti, Salad', dinner: 'Kadhai Paneer, Roti' },
+  { day: 'Tue', breakfast: 'Aloo Paratha, Curd, Pickle', lunch: 'Aloo Gobi, Chana Masala, Plain Rice, Roti, Raita', dinner: 'Mix Veg, Dal Tadka, Roti' },
+  { day: 'Wed', breakfast: 'Idli, Sambar, Coconut Chutney', lunch: 'Palak Paneer, Mix Veg, Pulao, Roti, Papad', dinner: 'Rajma Chawal, Salad' },
+  { day: 'Thu', breakfast: 'Puri Sabzi, Halwa', lunch: 'Rajma Chawal, Bhindi Masala, Roti, Salad', dinner: 'Malai Kofta, Naan' },
+  { day: 'Fri', breakfast: 'Upma, Tea, Biscuits', lunch: 'Kadhai Paneer, Dal Tadka, Jeera Rice, Roti', dinner: 'Chole Bhature, Sweet Lassi' },
+  { day: 'Sat', breakfast: 'Masala Dosa, Sambar', lunch: 'Pav Bhaji, Veg Biryani, Boondi Raita, Gulab Jamun', dinner: 'Aloo Tikki, Chole' },
+  { day: 'Sun', breakfast: 'Chole Bhature, Lassi', lunch: 'Paneer Butter Masala, Garlic Naan, Pulao, Salad', dinner: 'Dal Makhani, Jeera Rice' },
+];
+
 export default function AdminDashboard() {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
@@ -116,7 +126,7 @@ export default function AdminDashboard() {
   const loadMenu = async (dateStr: string) => {
     setMenuDate(dateStr);
     try {
-      const res = await fetch(`/api/admin/menu?date=${dateStr}`);
+      const res = await fetch(`/api/admin/menu?dateString=${dateStr}`);
       const data = await res.json();
       if (data.success && data.menu) {
         setMenuData({
@@ -125,7 +135,14 @@ export default function AdminDashboard() {
           dinner: data.menu.dinner || ''
         });
       } else {
-        setMenuData({ breakfast: '', lunch: '', dinner: '' });
+        const dateObj = new Date(dateStr);
+        const dayStr = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][dateObj.getDay()];
+        const defaultDayMenu = WEEKLY_MENU.find(m => m.day === dayStr);
+        setMenuData({ 
+          breakfast: defaultDayMenu?.breakfast || '', 
+          lunch: defaultDayMenu?.lunch || '', 
+          dinner: defaultDayMenu?.dinner || '' 
+        });
       }
     } catch(e) { console.error(e); }
   };
@@ -552,34 +569,113 @@ export default function AdminDashboard() {
         {activeTab === 'menu' && (
           <div className="grid grid-cols-1 gap-8">
             <motion.div initial={{opacity:0, y:20}} animate={{opacity:1, y:0}} transition={{delay:0.1}} className="glass-panel rounded-3xl p-6 md:p-8 relative overflow-hidden">
-               <h3 className="text-[10px] font-bold text-muted uppercase tracking-widest mb-6 flex items-center gap-2">
-                 <CalendarDays className="h-4 w-4" /> Daily Menu Management
-               </h3>
+               <div className="mb-6">
+                 <h3 className="text-sm font-black text-foreground flex items-center gap-2 mb-1">
+                   <CalendarDays className="h-5 w-5 text-primary" /> Daily Menu Studio
+                 </h3>
+                 <p className="text-xs text-muted font-medium">Create and update meal plans for students</p>
+               </div>
                
-               <div className="flex flex-col md:flex-row gap-4 mb-6">
+               <div className="flex flex-col md:flex-row gap-4 mb-8 bg-card border border-border p-4 rounded-2xl">
                  <div className="flex-1">
-                   <label className="block text-xs font-bold text-muted mb-2 uppercase tracking-widest">Select Date</label>
-                   <input type="date" value={menuDate} onChange={(e) => loadMenu(e.target.value)} className="w-full glass-input bg-card px-4 py-3 rounded-xl focus:outline-none" />
+                   <label className="block text-[10px] font-bold text-muted mb-2 uppercase tracking-widest">Select Date</label>
+                   <input type="date" value={menuDate} onChange={(e) => loadMenu(e.target.value)} className="w-full glass-input bg-background px-4 py-3 rounded-xl focus:outline-none" />
                  </div>
                </div>
 
-               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+               {/* Current Menu Summary */}
+               <div className="mb-6 p-4 bg-primary/10 border border-primary/20 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                  <div>
-                   <label className="block text-xs font-bold text-muted mb-2 uppercase tracking-widest">Breakfast</label>
-                   <textarea value={menuData.breakfast} onChange={(e) => setMenuData({...menuData, breakfast: e.target.value})} className="w-full glass-input bg-card px-4 py-3 rounded-xl focus:outline-none resize-none h-24" placeholder="E.g., Poha, Tea, Toast" />
-                 </div>
-                 <div>
-                   <label className="block text-xs font-bold text-muted mb-2 uppercase tracking-widest">Lunch</label>
-                   <textarea value={menuData.lunch} onChange={(e) => setMenuData({...menuData, lunch: e.target.value})} className="w-full glass-input bg-card px-4 py-3 rounded-xl focus:outline-none resize-none h-24" placeholder="E.g., Dal Makhani, Rice, Roti" />
-                 </div>
-                 <div>
-                   <label className="block text-xs font-bold text-muted mb-2 uppercase tracking-widest">Dinner</label>
-                   <textarea value={menuData.dinner} onChange={(e) => setMenuData({...menuData, dinner: e.target.value})} className="w-full glass-input bg-card px-4 py-3 rounded-xl focus:outline-none resize-none h-24" placeholder="E.g., Kadhai Paneer, Roti" />
+                   <h4 className="text-xs font-bold text-primary uppercase tracking-widest flex items-center gap-2">
+                     <CalendarDays className="h-4 w-4" /> Selected Date: {new Date(menuDate).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
+                   </h4>
+                   <p className="text-[10px] text-muted-foreground mt-1 font-medium">Inputs are pre-filled with the current saved or default menu. Only changed fields will be updated.</p>
                  </div>
                </div>
 
-               <button onClick={saveMenu} className="w-full py-3.5 bg-primary text-white font-black rounded-xl text-sm flex items-center justify-center gap-2 transition-all shadow-sm">
-                 <Check className="h-4 w-4" /> Save Menu
+               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                 {[
+                   { id: 'breakfast', label: 'Breakfast', icon: '🌅', placeholder: 'Poha, Jalebi, Tea' },
+                   { id: 'lunch', label: 'Lunch', icon: '☀️', placeholder: 'Dal Makhani, Rice, Roti' },
+                   { id: 'dinner', label: 'Dinner', icon: '🌙', placeholder: 'Kadhai Paneer, Naan' }
+                 ].map((meal) => {
+                   const mealStr = menuData[meal.id as keyof typeof menuData];
+                   const items = mealStr ? mealStr.split(',').map(s => s.trim()).filter(Boolean) : [];
+                   return (
+                     <div key={meal.id} className="glass-card bg-background/40 border border-border rounded-2xl p-5 flex flex-col focus-within:border-primary/50 transition-all">
+                       <div className="flex items-center gap-3 mb-4">
+                         <div className="h-10 w-10 bg-card rounded-xl flex items-center justify-center shadow-inner">
+                           <span className="text-xl">{meal.icon}</span>
+                         </div>
+                         <div>
+                           <h4 className="font-black text-sm uppercase tracking-widest">{meal.label}</h4>
+                           <span className="text-[9px] text-muted font-bold uppercase tracking-widest">Separate items with commas</span>
+                         </div>
+                       </div>
+                       <textarea 
+                         value={menuData[meal.id as keyof typeof menuData]} 
+                         onChange={(e) => setMenuData({...menuData, [meal.id]: e.target.value})} 
+                         className="w-full glass-input bg-card px-4 py-3 rounded-xl focus:outline-none resize-none h-24 text-sm mb-3" 
+                         placeholder={`E.g., ${meal.placeholder}`} 
+                       />
+                       <div className="flex flex-wrap gap-1.5 mt-auto">
+                         {items.length > 0 ? (
+                           items.map((item, idx) => (
+                             <span key={idx} className="px-2 py-1 bg-card border border-border rounded text-[10px] font-medium text-muted-foreground shadow-sm">
+                               {item}
+                             </span>
+                           ))
+                         ) : (
+                           <span className="text-[10px] text-muted italic">Type to preview items...</span>
+                         )}
+                       </div>
+                     </div>
+                   );
+                 })}
+               </div>
+
+               {/* Live Preview Section */}
+               <div className="mb-8">
+                 <h4 className="text-[10px] font-bold text-primary uppercase tracking-widest mb-4 flex items-center gap-2">
+                   <Sparkles className="h-4 w-4" /> Live Student Preview
+                 </h4>
+                 <div className="bg-card border border-white/5 rounded-2xl p-6 relative overflow-hidden">
+                   <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-[40px] pointer-events-none" />
+                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 relative z-10">
+                     {['breakfast', 'lunch', 'dinner'].map((mealType) => {
+                       const mealStr = menuData[mealType as keyof typeof menuData];
+                       const items = mealStr ? mealStr.split(',').map(s => s.trim()).filter(Boolean) : [];
+                       
+                       let icon = '🌅';
+                       if (mealType === 'lunch') icon = '☀️';
+                       if (mealType === 'dinner') icon = '🌙';
+
+                       return (
+                         <div key={`preview-${mealType}`} className="bg-background/80 border border-border rounded-xl p-4">
+                           <div className="flex items-center gap-2 mb-3">
+                             <span className="text-sm">{icon}</span>
+                             <h5 className="text-[10px] font-bold uppercase tracking-widest text-muted">{mealType}</h5>
+                           </div>
+                           {items.length > 0 ? (
+                             <div className="flex flex-wrap gap-1.5">
+                               {items.map((item, idx) => (
+                                 <span key={idx} className="px-2 py-1 bg-card border border-border rounded text-[10px] font-medium text-foreground">
+                                   {item}
+                                 </span>
+                               ))}
+                             </div>
+                           ) : (
+                             <p className="text-[10px] text-muted italic">Not specified</p>
+                           )}
+                         </div>
+                       );
+                     })}
+                   </div>
+                 </div>
+               </div>
+
+               <button onClick={saveMenu} className="w-full py-4 bg-primary hover:bg-primary-dark text-white font-black rounded-2xl text-sm flex items-center justify-center gap-2 transition-all shadow-[0_0_20px_-5px_rgba(34,197,94,0.5)] active:scale-[0.98]">
+                 <Check className="h-5 w-5" /> Save Menu Update
                </button>
             </motion.div>
           </div>
