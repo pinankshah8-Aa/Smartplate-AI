@@ -278,25 +278,25 @@ export default function StudentDashboard() {
   if (isLoading || !user) {
     return (
       <div className="min-h-[100dvh] bg-background text-foreground pb-8 relative overflow-hidden">
-        <header className="glass-panel sticky top-0 z-40 border-b border-white/5 px-6 py-4">
+        <header className="glass-panel sticky top-0 z-40 border-b border-border px-6 py-4">
           <div className="max-w-5xl mx-auto flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-white/5 rounded-xl animate-pulse" />
+              <div className="w-10 h-10 bg-black/5 dark:bg-white/5 rounded-xl animate-pulse" />
               <div className="space-y-2">
-                <div className="w-32 h-4 bg-white/5 rounded animate-pulse" />
-                <div className="w-20 h-2 bg-white/5 rounded animate-pulse" />
+                <div className="w-32 h-4 bg-black/5 dark:bg-white/5 rounded animate-pulse" />
+                <div className="w-20 h-2 bg-black/5 dark:bg-white/5 rounded animate-pulse" />
               </div>
             </div>
-            <div className="w-8 h-8 bg-white/5 rounded-xl animate-pulse" />
+            <div className="w-8 h-8 bg-black/5 dark:bg-white/5 rounded-xl animate-pulse" />
           </div>
         </header>
         <main className="max-w-5xl mx-auto px-4 mt-8 space-y-8">
-          <div className="glass-card h-72 rounded-3xl animate-pulse bg-white/5 relative overflow-hidden">
+          <div className="glass-card h-72 rounded-3xl animate-pulse bg-black/5 dark:bg-white/5 relative overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full animate-[shimmer_1.5s_infinite]" />
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <div className="glass-card h-64 rounded-3xl animate-pulse bg-white/5 relative overflow-hidden" />
-            <div className="glass-card h-64 rounded-3xl animate-pulse bg-white/5 relative overflow-hidden" />
+            <div className="glass-card h-64 rounded-3xl animate-pulse bg-black/5 dark:bg-white/5 relative overflow-hidden" />
+            <div className="glass-card h-64 rounded-3xl animate-pulse bg-black/5 dark:bg-white/5 relative overflow-hidden" />
           </div>
         </main>
       </div>
@@ -313,21 +313,21 @@ export default function StudentDashboard() {
         <div className="absolute bottom-[-20%] left-[-10%] w-[50%] h-[50%] bg-info/10 rounded-full mix-blend-screen blur-[120px]" />
       </div>
 
-      <header className="glass-panel sticky top-0 z-40 border-b border-white/5 px-4 sm:px-8 xl:px-12 py-4">
+      <header className="glass-panel sticky top-0 z-40 border-b border-border px-4 sm:px-8 xl:px-12 py-4">
         <div className="w-full flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-gradient-to-br from-primary to-primary-dark rounded-xl border border-white/10 shadow-[0_0_15px_rgba(16,185,129,0.3)]">
               <Sparkles className="h-5 w-5 text-white" />
             </div>
             <div>
-              <h1 className="text-base sm:text-lg font-black text-white leading-tight">SmartPlate AI</h1>
+              <h1 className="text-base sm:text-lg font-black text-slate-900 dark:text-white leading-tight">SmartPlate AI</h1>
               <p className="text-[10px] text-primary-light font-bold tracking-wider uppercase">Student Portal</p>
             </div>
           </div>
           <div className="flex items-center gap-3 sm:gap-4">
-            <span className="text-sm text-muted hidden md:inline-block">Welcome, <strong className="text-white">{user.name}</strong></span>
+            <span className="text-sm text-muted hidden md:inline-block">Welcome, <strong className="text-slate-900 dark:text-white">{user.name}</strong></span>
             <ThemeToggle />
-            <button onClick={handleLogout} className="p-2 bg-card border border-border rounded-xl text-muted hover:text-white hover:border-white/20 transition-all shadow-sm">
+            <button onClick={handleLogout} className="p-2 bg-card border border-border rounded-xl text-muted hover:text-foreground hover:border-border transition-all shadow-sm">
               <LogOut className="h-4 w-4" />
             </button>
           </div>
@@ -379,7 +379,7 @@ export default function StudentDashboard() {
               <Leaf className="h-6 w-6 text-primary" />
             </div>
             <div>
-              <div className="text-3xl font-black text-white">450</div>
+              <div className="text-3xl font-black text-slate-900 dark:text-white">450</div>
               <div className="text-[10px] text-muted uppercase font-bold tracking-widest mt-1">Eco Points</div>
             </div>
           </div>
@@ -388,7 +388,7 @@ export default function StudentDashboard() {
               <CalendarCheck className="h-6 w-6 text-info" />
             </div>
             <div>
-              <div className="text-3xl font-black text-white">18</div>
+              <div className="text-3xl font-black text-slate-900 dark:text-white">18</div>
               <div className="text-[10px] text-muted uppercase font-bold tracking-widest mt-1">Meals Eaten</div>
             </div>
           </div>
@@ -397,7 +397,7 @@ export default function StudentDashboard() {
               <TrendingDown className="h-6 w-6 text-warning" />
             </div>
             <div>
-              <div className="text-3xl font-black text-white">2.5<span className="text-lg">kg</span></div>
+              <div className="text-3xl font-black text-slate-900 dark:text-white">2.5<span className="text-lg">kg</span></div>
               <div className="text-[10px] text-muted uppercase font-bold tracking-widest mt-1">Waste Avoided</div>
             </div>
           </div>
@@ -408,7 +408,7 @@ export default function StudentDashboard() {
         {activeTab === 'today' && (
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.1 }} className="glass-card rounded-3xl p-6 md:p-10 relative overflow-hidden">
           <div className="absolute top-0 right-0 p-6 pointer-events-none">
-            <div className={`flex items-center gap-2 border px-3 py-1.5 rounded-full backdrop-blur-md ${isLocked ? 'bg-danger/10 border-danger/30' : 'bg-background/50 border-white/10'}`}>
+            <div className={`flex items-center gap-2 border px-3 py-1.5 rounded-full backdrop-blur-md ${isLocked ? 'bg-danger/10 border-danger/30' : 'bg-background/50 border-black/10 dark:border-white/10'}`}>
               <Clock className={`h-4 w-4 ${isLocked ? 'text-danger' : 'text-warning'}`} />
               <span className={`text-[10px] uppercase tracking-wider font-bold ${isLocked ? 'text-danger' : 'text-muted'}`}>
                 {isTimeLocked ? `Locked at ${formatTimeToAMPM(cutoffTime)}` : `Auto-locks at ${formatTimeToAMPM(cutoffTime)}`}
@@ -416,7 +416,7 @@ export default function StudentDashboard() {
             </div>
           </div>
 
-          <h2 className="text-2xl md:text-3xl font-black text-white mb-2 mt-2">Meal required tomorrow?</h2>
+          <h2 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white mb-2 mt-2">Meal required tomorrow?</h2>
           <p className="text-muted text-sm md:text-base mb-8 max-w-xl">Your choice directly impacts food preparation. Help us predict exact quantities and completely eliminate food waste.</p>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -424,28 +424,28 @@ export default function StudentDashboard() {
               onClick={() => selectAttendance('going')}
               disabled={isLocked}
               className={`p-6 rounded-2xl border flex items-center justify-center gap-4 transition-all duration-300 transform active:scale-[0.98]
-                ${attendance === 'going' ? 'border-primary bg-primary/10 shadow-[0_0_30px_-5px_rgba(16,185,129,0.3)]' : 'border-white/10 bg-background/40 hover:bg-card hover:border-white/20'}
+                ${attendance === 'going' ? 'border-primary bg-primary/10 shadow-[0_0_30px_-5px_rgba(16,185,129,0.3)]' : 'border-black/10 dark:border-white/10 bg-background/40 hover:bg-card hover:border-black/20 dark:hover:border-white/20'}
                 ${isLocked && attendance !== 'going' ? 'opacity-40 cursor-not-allowed filter grayscale' : ''}
               `}
             >
-              <div className={`p-3 rounded-full transition-colors duration-300 ${attendance === 'going' ? 'bg-primary text-white shadow-[0_0_15px_rgba(16,185,129,0.5)]' : 'bg-card border border-white/10 text-muted'}`}>
+              <div className={`p-3 rounded-full transition-colors duration-300 ${attendance === 'going' ? 'bg-primary text-white shadow-[0_0_15px_rgba(16,185,129,0.5)]' : 'bg-card border border-border text-muted'}`}>
                 <CheckCircle className="h-6 w-6" />
               </div>
-              <span className={`font-black text-lg ${attendance === 'going' ? 'text-primary drop-shadow-[0_2px_4px_rgba(16,185,129,0.4)]' : 'text-white'}`}>Yes, Required</span>
+              <span className={`font-black text-lg ${attendance === 'going' ? 'text-primary drop-shadow-[0_2px_4px_rgba(16,185,129,0.4)]' : 'text-slate-900 dark:text-white'}`}>Yes, Required</span>
             </button>
             
             <button 
               onClick={() => selectAttendance('not_going')}
               disabled={isLocked}
               className={`p-6 rounded-2xl border flex items-center justify-center gap-4 transition-all duration-300 transform active:scale-[0.98]
-                ${attendance === 'not_going' ? 'border-danger bg-danger/10 shadow-[0_0_30px_-5px_rgba(244,63,94,0.2)]' : 'border-white/10 bg-background/40 hover:bg-card hover:border-white/20'}
+                ${attendance === 'not_going' ? 'border-danger bg-danger/10 shadow-[0_0_30px_-5px_rgba(244,63,94,0.2)]' : 'border-black/10 dark:border-white/10 bg-background/40 hover:bg-card hover:border-black/20 dark:hover:border-white/20'}
                 ${isLocked && attendance !== 'not_going' ? 'opacity-40 cursor-not-allowed filter grayscale' : ''}
               `}
             >
-              <div className={`p-3 rounded-full transition-colors duration-300 ${attendance === 'not_going' ? 'bg-danger text-white shadow-[0_0_15px_rgba(244,63,94,0.5)]' : 'bg-card border border-white/10 text-muted'}`}>
+              <div className={`p-3 rounded-full transition-colors duration-300 ${attendance === 'not_going' ? 'bg-danger text-white shadow-[0_0_15px_rgba(244,63,94,0.5)]' : 'bg-card border border-border text-muted'}`}>
                 <XCircle className="h-6 w-6" />
               </div>
-              <span className={`font-black text-lg ${attendance === 'not_going' ? 'text-danger drop-shadow-[0_2px_4px_rgba(244,63,94,0.4)]' : 'text-white'}`}>Not Required</span>
+              <span className={`font-black text-lg ${attendance === 'not_going' ? 'text-danger drop-shadow-[0_2px_4px_rgba(244,63,94,0.4)]' : 'text-slate-900 dark:text-white'}`}>Not Required</span>
             </button>
           </div>
 
@@ -469,7 +469,7 @@ export default function StudentDashboard() {
 
           <AnimatePresence>
             {isSubmitted && attendance === 'going' && qrSrc && (
-               <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="mt-8 pt-8 border-t border-white/10 flex flex-col items-center overflow-hidden">
+               <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="mt-8 pt-8 border-t border-border flex flex-col items-center overflow-hidden">
                  <p className="text-[10px] font-bold text-muted uppercase tracking-widest mb-4">Your Lunch Verification QR</p>
                  <div className="bg-white p-3 rounded-2xl shadow-[0_10px_40px_-10px_rgba(16,185,129,0.3)] relative group">
                    <div className="absolute inset-0 border-2 border-primary/50 rounded-2xl scale-105 opacity-0 group-hover:opacity-100 group-hover:scale-100 transition-all duration-300 pointer-events-none" />
@@ -503,7 +503,7 @@ export default function StudentDashboard() {
                  <button 
                    key={item.day}
                    onClick={() => setActiveDayTab(item.day)}
-                   className={`px-6 py-3 rounded-xl text-sm font-bold shrink-0 transition-all duration-300 flex items-center justify-center min-w-[80px] ${activeDayTab === item.day ? 'bg-primary text-white shadow-[0_4px_15px_-3px_rgba(34,197,94,0.4)] scale-105 relative z-10' : 'bg-card border border-white/5 text-muted hover:text-white hover:border-white/20 hover:bg-background'}`}
+                   className={`px-6 py-3 rounded-xl text-sm font-bold shrink-0 transition-all duration-300 flex items-center justify-center min-w-[80px] ${activeDayTab === item.day ? 'bg-primary text-white shadow-[0_4px_15px_-3px_rgba(34,197,94,0.4)] scale-105 relative z-10' : 'bg-card border border-border text-muted hover:text-foreground hover:border-border hover:bg-background'}`}
                  >
                    {item.day}
                  </button>
@@ -593,17 +593,17 @@ export default function StudentDashboard() {
               )}
             </AnimatePresence>
 
-            <div className="bg-background/60 border border-white/5 rounded-2xl p-6 shadow-inner mb-6 relative z-10">
-              <h4 className="text-xl font-black text-white text-center mb-1">Paneer Butter Masala</h4>
+            <div className="bg-background/60 border border-border rounded-2xl p-6 shadow-inner mb-6 relative z-10">
+              <h4 className="text-xl font-black text-slate-900 dark:text-white text-center mb-1">Paneer Butter Masala</h4>
               <p className="text-[10px] uppercase tracking-wider text-center text-muted mb-6">Do you want to change this menu item?</p>
               
               {/* Progress Bar */}
               <div className="mb-2">
                 <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest mb-2">
-                  <span className="text-warning flex items-center gap-1">Change It <span className="text-white/50">({pollStats.changePercentage}%)</span></span>
-                  <span className="text-primary flex items-center gap-1"><span className="text-white/50">({100 - pollStats.changePercentage}%)</span> Keep It</span>
+                  <span className="text-warning flex items-center gap-1">Change It <span className="text-slate-500 dark:text-white/50">({pollStats.changePercentage}%)</span></span>
+                  <span className="text-primary flex items-center gap-1"><span className="text-slate-500 dark:text-white/50">({100 - pollStats.changePercentage}%)</span> Keep It</span>
                 </div>
-                <div className="w-full bg-card rounded-full h-2 flex overflow-hidden border border-white/5">
+                <div className="w-full bg-card rounded-full h-2 flex overflow-hidden border border-border">
                   <div 
                     style={{ width: `${pollStats.changePercentage}%` }} 
                     className="bg-gradient-to-r from-warning to-orange-400 h-full transition-all duration-700 ease-out"
@@ -620,14 +620,14 @@ export default function StudentDashboard() {
               <button 
                 onClick={() => submitPoll(true)}
                 disabled={pollVote !== null}
-                className={`flex-1 py-3.5 rounded-xl border flex justify-center items-center gap-2 font-bold transition-all duration-300 text-sm ${pollVote === true ? 'bg-warning/20 border-warning/50 text-warning shadow-[0_0_15px_-3px_rgba(245,158,11,0.3)]' : 'bg-card border-white/10 text-muted hover:border-warning/50 hover:text-warning hover:bg-background'} ${pollVote !== null && pollVote !== true ? 'opacity-40 grayscale' : 'active:scale-95'}`}
+                className={`flex-1 py-3.5 rounded-xl border flex justify-center items-center gap-2 font-bold transition-all duration-300 text-sm ${pollVote === true ? 'bg-warning/20 border-warning/50 text-warning shadow-[0_0_15px_-3px_rgba(245,158,11,0.3)]' : 'bg-card border-black/10 dark:border-white/10 text-muted hover:border-warning/50 hover:text-warning hover:bg-background'} ${pollVote !== null && pollVote !== true ? 'opacity-40 grayscale' : 'active:scale-95'}`}
               >
                 Yes, Change it
               </button>
               <button 
                 onClick={() => submitPoll(false)}
                 disabled={pollVote !== null}
-                className={`flex-1 py-3.5 rounded-xl border flex justify-center items-center gap-2 font-bold transition-all duration-300 text-sm ${pollVote === false ? 'bg-primary/20 border-primary/50 text-primary shadow-[0_0_15px_-3px_rgba(16,185,129,0.3)]' : 'bg-card border-white/10 text-muted hover:border-primary/50 hover:text-primary hover:bg-background'} ${pollVote !== null && pollVote !== false ? 'opacity-40 grayscale' : 'active:scale-95'}`}
+                className={`flex-1 py-3.5 rounded-xl border flex justify-center items-center gap-2 font-bold transition-all duration-300 text-sm ${pollVote === false ? 'bg-primary/20 border-primary/50 text-primary shadow-[0_0_15px_-3px_rgba(16,185,129,0.3)]' : 'bg-card border-black/10 dark:border-white/10 text-muted hover:border-primary/50 hover:text-primary hover:bg-background'} ${pollVote !== null && pollVote !== false ? 'opacity-40 grayscale' : 'active:scale-95'}`}
               >
                 No, Keep it
               </button>
@@ -648,11 +648,11 @@ export default function StudentDashboard() {
                  <div className="p-2 bg-gradient-to-br from-primary to-primary-dark rounded-xl shadow-[0_0_15px_rgba(16,185,129,0.4)]"><Sparkles className="h-4 w-4 text-white" /></div>
                  <div>
                    <h3 className="text-[10px] font-bold text-primary-light uppercase tracking-widest">AI Predicted Menu</h3>
-                   <span className="text-xs text-muted font-medium">Tomorrow's optimization</span>
+                   <span className="text-xs text-slate-700 dark:text-slate-300 font-medium">Tomorrow's optimization</span>
                  </div>
                </div>
                
-               <h4 className="text-3xl md:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-white to-white/70 mb-2 leading-tight">Palak Paneer &<br/>Mix Veg</h4>
+               <h4 className="text-3xl md:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-slate-900 to-slate-700 dark:from-white dark:to-white/70 mb-2 leading-tight">Palak Paneer &<br/>Mix Veg</h4>
                <p className="text-sm text-primary font-medium mb-6 flex items-center gap-2"><ChevronRight className="h-4 w-4"/> Replacing standard Aloo Matar</p>
                
                <div className="glass-input rounded-2xl p-5 shadow-inner">
@@ -660,19 +660,19 @@ export default function StudentDashboard() {
                    <span className="text-[10px] text-muted uppercase font-bold tracking-widest flex items-center gap-1.5"><Sparkles className="h-3 w-3 text-primary"/> AI Confidence</span>
                    <span className="text-sm font-black text-primary">92%</span>
                  </div>
-                 <div className="w-full bg-card rounded-full h-1.5 mb-4 border border-white/5 overflow-hidden">
+                 <div className="w-full bg-card rounded-full h-1.5 mb-4 border border-border overflow-hidden">
                    <div className="bg-gradient-to-r from-primary-dark to-primary-light h-full w-[92%] shadow-[0_0_10px_rgba(16,185,129,0.8)] relative">
-                     <div className="absolute inset-0 bg-white/20 animate-pulse" />
+                     <div className="absolute inset-0 bg-background/20 animate-pulse" />
                    </div>
                  </div>
-                 <p className="text-xs text-muted leading-relaxed">
+                 <p className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed">
                    <strong>Reasoning:</strong> High student preference for Palak Paneer during mid-week. AI detected 30% lower attendance on Aloo Matar days historically based on past 3 months of data.
                  </p>
                </div>
              </div>
              
              <div className="relative z-10 mt-auto">
-               <button onClick={() => setShowEmergency(true)} className="w-full py-4 bg-card border border-white/10 hover:border-warning/30 hover:bg-warning/5 rounded-xl text-sm font-bold text-muted hover:text-warning flex items-center justify-center gap-2 transition-all duration-300 group">
+               <button onClick={() => setShowEmergency(true)} className="w-full py-4 bg-card border border-border hover:border-warning/30 hover:bg-warning/5 rounded-xl text-sm font-bold text-muted hover:text-warning flex items-center justify-center gap-2 transition-all duration-300 group">
                  <AlertTriangle className="h-4 w-4 group-hover:scale-110 transition-transform" /> Request Emergency Change
                </button>
              </div>
@@ -685,11 +685,11 @@ export default function StudentDashboard() {
             <h3 className="text-[10px] font-bold text-muted uppercase tracking-widest mb-6 flex items-center gap-2"><MessageSquare className="h-4 w-4" /> Rate Today's Menu</h3>
             
             <div className="flex gap-3 mb-6">
-              <button onClick={() => setRating('up')} className={`flex-1 py-5 rounded-2xl border flex flex-col justify-center items-center gap-3 font-bold transition-all duration-300 ${rating === 'up' ? 'bg-primary/10 border-primary/50 text-primary shadow-[0_0_20px_-5px_rgba(16,185,129,0.3)]' : 'bg-background/40 border-white/10 text-muted hover:border-primary/30 hover:bg-card'}`}>
+              <button onClick={() => setRating('up')} className={`flex-1 py-5 rounded-2xl border flex flex-col justify-center items-center gap-3 font-bold transition-all duration-300 ${rating === 'up' ? 'bg-primary/10 border-primary/50 text-primary shadow-[0_0_20px_-5px_rgba(16,185,129,0.3)]' : 'bg-background/40 border-border text-muted hover:border-primary/30 hover:bg-card'}`}>
                 <div className={`p-3 rounded-full ${rating === 'up' ? 'bg-primary/20' : 'bg-card'}`}><ThumbsUp className="h-6 w-6" /></div>
                 <span className="text-sm">Loved it</span>
               </button>
-              <button onClick={() => setRating('down')} className={`flex-1 py-5 rounded-2xl border flex flex-col justify-center items-center gap-3 font-bold transition-all duration-300 ${rating === 'down' ? 'bg-danger/10 border-danger/50 text-danger shadow-[0_0_20px_-5px_rgba(244,63,94,0.2)]' : 'bg-background/40 border-white/10 text-muted hover:border-danger/30 hover:bg-card'}`}>
+              <button onClick={() => setRating('down')} className={`flex-1 py-5 rounded-2xl border flex flex-col justify-center items-center gap-3 font-bold transition-all duration-300 ${rating === 'down' ? 'bg-danger/10 border-danger/50 text-danger shadow-[0_0_20px_-5px_rgba(244,63,94,0.2)]' : 'bg-background/40 border-border text-muted hover:border-danger/30 hover:bg-card'}`}>
                 <div className={`p-3 rounded-full ${rating === 'down' ? 'bg-danger/20' : 'bg-card'}`}><ThumbsDown className="h-6 w-6" /></div>
                 <span className="text-sm">Disliked it</span>
               </button>
@@ -701,11 +701,11 @@ export default function StudentDashboard() {
                 value={comment}
                 onChange={(e) => setComment(e.target.value)}
                 placeholder="Any suggestions? (e.g. Too spicy, need more paneer)" 
-                className="w-full flex-1 glass-input rounded-2xl pl-12 pr-4 py-4 text-sm text-white focus:outline-none placeholder:text-muted/60 resize-none min-h-[100px]"
+                className="w-full flex-1 glass-input rounded-2xl pl-12 pr-4 py-4 text-sm text-slate-900 dark:text-white focus:outline-none placeholder:text-muted/60 resize-none min-h-[100px]"
               />
             </div>
             
-            <button onClick={submitFeedback} className="w-full py-4 bg-white hover:bg-slate-200 text-background font-black rounded-xl text-sm flex items-center justify-center gap-2 transition-all duration-300 shadow-[0_0_20px_rgba(255,255,255,0.1)] active:scale-[0.98]">
+            <button onClick={submitFeedback} className="w-full py-4 bg-foreground hover:bg-foreground/90 text-background font-black rounded-xl text-sm flex items-center justify-center gap-2 transition-all duration-300 shadow-md active:scale-[0.98]">
               Submit Feedback <Send className="h-4 w-4" />
             </button>
             </motion.div>
@@ -718,7 +718,7 @@ export default function StudentDashboard() {
           <div className="absolute top-0 right-0 p-6 pointer-events-none">
             <Leaf className="h-24 w-24 text-primary/5 -rotate-12" />
           </div>
-          <h3 className="text-xl font-black text-white mb-6 flex items-center gap-2"><Sparkles className="h-5 w-5 text-primary" /> Top Eco Warriors</h3>
+          <h3 className="text-xl font-black text-slate-900 dark:text-white mb-6 flex items-center gap-2"><Sparkles className="h-5 w-5 text-primary" /> Top Eco Warriors</h3>
           
           <motion.div 
             className="space-y-3"
@@ -740,7 +740,7 @@ export default function StudentDashboard() {
                   visible: { opacity: 1, x: 0, transition: { type: "spring", stiffness: 300, damping: 24 } }
                 }}
                 whileHover={{ scale: 1.02, x: 5 }}
-                className="group flex items-center justify-between p-4 bg-background/40 rounded-2xl border border-white/5 hover:border-primary/30 hover:bg-primary/5 transition-all cursor-pointer relative overflow-hidden"
+                className="group flex items-center justify-between p-4 bg-background/40 rounded-2xl border border-black/5 dark:border-white/5 hover:border-primary/30 hover:bg-primary/5 transition-all cursor-pointer relative overflow-hidden"
               >
                 {/* Glow effect on hover */}
                 <div className="absolute inset-0 bg-gradient-to-r from-primary/0 via-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -762,12 +762,12 @@ export default function StudentDashboard() {
                     </div>
                   )}
                   {index > 2 && (
-                    <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-xs bg-white/5 text-muted">
+                    <div className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-xs bg-black/5 dark:bg-white/5 text-muted">
                       {index + 1}
                     </div>
                   )}
                   <div>
-                    <h4 className="text-sm font-bold text-white group-hover:text-primary transition-colors flex items-center gap-2">
+                    <h4 className="text-sm font-bold text-slate-900 dark:text-white group-hover:text-primary transition-colors flex items-center gap-2">
                       {lbUser.name}
                       {index === 0 && <span className="text-[10px] bg-warning/20 text-warning px-2 py-0.5 rounded-full border border-warning/30 hidden sm:inline-block">The Savior</span>}
                       {index === 1 && <span className="text-[10px] bg-slate-300/20 text-slate-300 px-2 py-0.5 rounded-full border border-slate-300/30 hidden sm:inline-block">Waste Warrior</span>}
@@ -794,15 +794,15 @@ export default function StudentDashboard() {
       <AnimatePresence>
         {showEmergency && (
           <div className="fixed inset-0 bg-background/80 z-50 flex items-center justify-center p-4 backdrop-blur-md">
-            <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }} className="glass-panel border-white/10 p-8 rounded-3xl w-full max-w-md shadow-2xl relative overflow-hidden">
+            <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }} className="glass-panel border-black/10 dark:border-white/10 p-8 rounded-3xl w-full max-w-md shadow-2xl relative overflow-hidden">
               <div className="absolute top-0 right-0 w-32 h-32 bg-warning/10 rounded-full blur-[40px] pointer-events-none" />
               
               <div className="flex justify-between items-center mb-6 relative z-10">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-warning/20 rounded-xl text-warning"><AlertTriangle className="h-5 w-5" /></div>
-                  <h2 className="text-xl font-bold text-white">Emergency Request</h2>
+                  <h2 className="text-xl font-bold text-slate-900 dark:text-white">Emergency Request</h2>
                 </div>
-                <button onClick={() => setShowEmergency(false)} className="p-2 text-muted hover:text-white bg-card rounded-full border border-white/5 transition-colors"><XCircle className="h-5 w-5" /></button>
+                <button onClick={() => setShowEmergency(false)} className="p-2 text-muted hover:text-foreground bg-card rounded-full border border-black/5 dark:border-white/5 transition-colors"><XCircle className="h-5 w-5" /></button>
               </div>
               
               <p className="text-sm text-muted mb-6 relative z-10 leading-relaxed">Need to change your attendance after the auto-lock time? This requires manual Admin approval.</p>
@@ -810,7 +810,7 @@ export default function StudentDashboard() {
               <textarea 
                 value={emergencyReason}
                 onChange={(e) => setEmergencyReason(e.target.value)}
-                className="w-full glass-input rounded-xl p-4 text-sm text-white focus:outline-none mb-6 relative z-10 resize-none placeholder:text-muted/60" 
+                className="w-full glass-input rounded-xl p-4 text-sm text-slate-900 dark:text-white focus:outline-none mb-6 relative z-10 resize-none placeholder:text-muted/60" 
                 placeholder="Reason for change... (e.g. Going home due to family emergency)" 
                 rows={4}
               ></textarea>

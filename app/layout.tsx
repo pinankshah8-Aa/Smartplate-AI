@@ -32,11 +32,11 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${outfit.variable} font-sans h-full antialiased overflow-x-hidden dark`}
+      className={`${outfit.variable} font-sans h-full antialiased overflow-x-hidden`}
       suppressHydrationWarning
     >
       <body className="min-h-full bg-background text-foreground flex flex-col selection:bg-primary/30 overflow-x-hidden" suppressHydrationWarning>
-        <ThemeProvider attribute="class" defaultTheme="dark" forcedTheme="dark" enableSystem={false}>
+        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={false}>
           <PWARegister />
           {children}
           <Toaster richColors position="top-right" />

@@ -356,17 +356,17 @@ export default function AdminDashboard() {
       <div className="min-h-[100dvh] bg-background text-foreground pb-8">
         <header className="bg-card border-b border-border sticky top-0 z-50">
           <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
-            <div className="w-40 h-6 bg-white/10 animate-pulse rounded"></div>
+            <div className="w-40 h-6 bg-black/10 dark:bg-white/10 animate-pulse rounded"></div>
           </div>
         </header>
         <main className="max-w-7xl mx-auto px-4 mt-8 space-y-8">
           <div className="flex bg-card p-1 rounded-2xl mb-6 shadow-sm border border-border overflow-x-auto scrollbar-hide gap-2">
-            {[1,2,3,4].map(i => <div key={i} className="h-10 w-24 bg-white/10 animate-pulse rounded-xl shrink-0"></div>)}
+            {[1,2,3,4].map(i => <div key={i} className="h-10 w-24 bg-black/10 dark:bg-white/10 animate-pulse rounded-xl shrink-0"></div>)}
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 md:gap-6">
-            {[1,2,3,4,5].map(i => <div key={i} className="h-28 glass-card animate-pulse rounded-2xl bg-white/5"></div>)}
+            {[1,2,3,4,5].map(i => <div key={i} className="h-28 glass-card animate-pulse rounded-2xl bg-black/5 dark:bg-white/5"></div>)}
           </div>
-          <div className="h-64 glass-panel animate-pulse rounded-3xl bg-white/5 mt-8"></div>
+          <div className="h-64 glass-panel animate-pulse rounded-3xl bg-black/5 dark:bg-white/5 mt-8"></div>
         </main>
       </div>
     );
@@ -446,7 +446,7 @@ export default function AdminDashboard() {
 
               <motion.div variants={itemVariants} className="glass-card border-primary/40 p-5 rounded-2xl flex flex-col relative overflow-hidden">
                 <div className="flex items-center justify-between mb-3 relative z-10">
-                  <span className="text-[10px] text-white uppercase font-bold tracking-widest">Waste Saved</span>
+                  <span className="text-[10px] text-foreground dark:text-white uppercase font-bold tracking-widest">Waste Saved</span>
                   <div className="p-1.5 bg-primary/20 rounded-lg"><TrendingDown className="h-4 w-4 text-primary" /></div>
                 </div>
                 <span className="text-4xl font-black mt-auto relative z-10">{stats.predictedWasteSavedKg}<span className="text-lg text-muted ml-1">kg</span></span>
@@ -454,7 +454,7 @@ export default function AdminDashboard() {
 
               <motion.div variants={itemVariants} className="glass-card border-info/40 p-5 rounded-2xl flex flex-col relative overflow-hidden">
                 <div className="flex items-center justify-between mb-3 relative z-10">
-                  <span className="text-[10px] text-white uppercase font-bold tracking-widest">Money Saved</span>
+                  <span className="text-[10px] text-foreground dark:text-white uppercase font-bold tracking-widest">Money Saved</span>
                   <div className="p-1.5 bg-info/20 rounded-lg"><IndianRupee className="h-4 w-4 text-info" /></div>
                 </div>
                 <span className="text-4xl font-black mt-auto relative z-10">₹{stats.moneySaved}</span>
@@ -462,8 +462,8 @@ export default function AdminDashboard() {
 
               <motion.div variants={itemVariants} className="glass-card border-primary/50 p-5 rounded-2xl flex flex-col relative overflow-hidden">
                 <div className="flex items-center justify-between mb-3 relative z-10">
-                  <span className="text-[10px] text-white uppercase font-bold tracking-widest">Reduction %</span>
-                  <div className="p-1.5 bg-white/20 rounded-lg"><PieChart className="h-4 w-4 text-white" /></div>
+                  <span className="text-[10px] text-foreground dark:text-white uppercase font-bold tracking-widest">Reduction %</span>
+                  <div className="p-1.5 bg-black/10 dark:bg-white/20 rounded-lg"><PieChart className="h-4 w-4 text-foreground dark:text-white" /></div>
                 </div>
                 <span className="text-4xl font-black mt-auto relative z-10">{stats.wasteReductionPct}%</span>
               </motion.div>
@@ -477,9 +477,9 @@ export default function AdminDashboard() {
                     <div key={idx} className="bg-card border border-border p-5 rounded-2xl flex flex-col">
                       <h4 className="font-bold text-md mb-3">{inst.name}</h4>
                       <div className="space-y-2 text-sm text-muted">
-                        <div className="flex justify-between"><span>Active Students:</span> <span className="font-bold text-white">{inst.total}</span></div>
+                        <div className="flex justify-between"><span>Active Students:</span> <span className="font-bold text-foreground dark:text-white">{inst.total}</span></div>
                         <div className="flex justify-between"><span>Meals Required:</span> <span className="font-bold text-primary">{inst.required}</span></div>
-                        <div className="flex justify-between"><span>Collected:</span> <span className="font-bold text-white">{inst.collected}</span></div>
+                        <div className="flex justify-between"><span>Collected:</span> <span className="font-bold text-foreground dark:text-white">{inst.collected}</span></div>
                         <div className="flex justify-between"><span>Pending Collection:</span> <span className="font-bold text-warning">{inst.pending}</span></div>
                       </div>
                     </div>
@@ -639,7 +639,7 @@ export default function AdminDashboard() {
                  <h4 className="text-[10px] font-bold text-primary uppercase tracking-widest mb-4 flex items-center gap-2">
                    <Sparkles className="h-4 w-4" /> Live Student Preview
                  </h4>
-                 <div className="bg-card border border-white/5 rounded-2xl p-6 relative overflow-hidden">
+                 <div className="bg-card border border-black/5 dark:border-white/5 rounded-2xl p-6 relative overflow-hidden">
                    <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-[40px] pointer-events-none" />
                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 relative z-10">
                      {['breakfast', 'lunch', 'dinner'].map((mealType) => {
@@ -882,7 +882,7 @@ export default function AdminDashboard() {
 
                  {students.filter(s => !s.isActive).length > 0 && (
                    <details className="mt-6">
-                     <summary className="text-xs font-bold text-muted cursor-pointer hover:text-white transition-colors">View Deactivated Students ({students.filter(s => !s.isActive).length})</summary>
+                     <summary className="text-xs font-bold text-muted cursor-pointer hover:text-foreground dark:hover:text-white transition-colors">View Deactivated Students ({students.filter(s => !s.isActive).length})</summary>
                      <div className="mt-4 border border-border rounded-xl overflow-hidden">
                        <table className="w-full text-left text-sm border-collapse opacity-60">
                          <tbody className="divide-y divide-border">

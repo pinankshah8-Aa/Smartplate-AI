@@ -120,10 +120,10 @@ export default function LoginPage() {
                   <Sparkles className="h-8 w-8 text-white" />
                 </div>
               </div>
-              <span className="text-3xl font-black tracking-tight text-white drop-shadow-md">SmartPlate AI</span>
+              <span className="text-3xl font-black tracking-tight text-slate-900 dark:text-white drop-shadow-md">SmartPlate AI</span>
             </motion.div>
             
-            <motion.h1 variants={itemVariants} className="text-5xl md:text-6xl font-black mb-6 leading-[1.1] text-transparent bg-clip-text bg-gradient-to-r from-white via-white to-white/60">
+            <motion.h1 variants={itemVariants} className="text-5xl md:text-6xl font-black mb-6 leading-[1.1] text-transparent bg-clip-text bg-gradient-to-r from-slate-900 via-slate-800 to-slate-600 dark:from-white dark:via-white dark:to-white/60">
               Predict.<br/>Vote.<br/><span className="text-primary drop-shadow-[0_0_15px_rgba(16,185,129,0.3)]">Save.</span>
             </motion.h1>
             
@@ -137,8 +137,8 @@ export default function LoginPage() {
 
             <motion.div variants={itemVariants} className="grid grid-cols-2 gap-4 max-w-sm">
               <div className="glass-panel p-5 rounded-2xl flex flex-col relative overflow-hidden group">
-                <div className="absolute inset-0 bg-gradient-to-tr from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                <span className="block text-4xl font-black text-white mb-1 drop-shadow-sm">55</span>
+                <div className="absolute inset-0 bg-gradient-to-tr from-black/5 dark:from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                <span className="block text-4xl font-black text-slate-900 dark:text-white mb-1 drop-shadow-sm">55</span>
                 <span className="text-[10px] text-muted uppercase font-bold tracking-widest">Total Students</span>
               </div>
               <div className="glass-panel border-primary/30 bg-primary/5 p-5 rounded-2xl flex flex-col relative overflow-hidden group shadow-[0_0_20px_-5px_rgba(16,185,129,0.2)]">
@@ -158,7 +158,7 @@ export default function LoginPage() {
             transition={{ duration: 0.6, delay: 0.2 }}
             className="glass-panel p-6 sm:p-8 md:p-10 rounded-3xl w-full max-w-md mx-auto shadow-2xl relative"
           >
-            <h2 className="text-3xl font-bold text-white mb-2 tracking-tight">{isLogin ? 'Welcome Back' : 'Create Account'}</h2>
+            <h2 className="text-3xl font-bold text-slate-900 dark:text-white mb-2 tracking-tight">{isLogin ? 'Welcome Back' : 'Create Account'}</h2>
             <p className="text-muted mb-8 text-sm">
               {isLogin ? 'Log in to your account or use the demo credentials below.' : 'Sign up to start saving food today.'}
             </p>
@@ -179,7 +179,7 @@ export default function LoginPage() {
                         value={name}
                         onChange={(e) => setName(e.target.value)}
                         placeholder="Enter your name"
-                        className="w-full px-4 py-3.5 glass-input rounded-xl text-sm text-white placeholder:text-muted/60"
+                        className="w-full px-4 py-3.5 glass-input rounded-xl text-sm text-slate-900 dark:text-white placeholder:text-muted/60"
                       />
                     </div>
                     <div>
@@ -189,7 +189,7 @@ export default function LoginPage() {
                         value={institutionName}
                         onChange={(e) => setInstitutionName(e.target.value)}
                         placeholder="e.g., Global Hostel, City PG"
-                        className="w-full px-4 py-3.5 glass-input rounded-xl text-sm text-white placeholder:text-muted/60"
+                        className="w-full px-4 py-3.5 glass-input rounded-xl text-sm text-slate-900 dark:text-white placeholder:text-muted/60"
                       />
                     </div>
                   </motion.div>
@@ -203,7 +203,7 @@ export default function LoginPage() {
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   placeholder="Enter username"
-                  className="w-full px-4 py-3.5 glass-input rounded-xl text-sm text-white placeholder:text-muted/60"
+                  className="w-full px-4 py-3.5 glass-input rounded-xl text-sm text-slate-900 dark:text-white placeholder:text-muted/60"
                 />
               </div>
 
@@ -214,7 +214,7 @@ export default function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Enter password"
-                  className="w-full px-4 py-3.5 glass-input rounded-xl text-sm text-white placeholder:text-muted/60"
+                  className="w-full px-4 py-3.5 glass-input rounded-xl text-sm text-slate-900 dark:text-white placeholder:text-muted/60"
                 />
               </div>
 
