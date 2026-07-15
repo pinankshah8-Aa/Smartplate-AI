@@ -1,9 +1,17 @@
 # SmartPlate AI 🍽️✨
 
-**Predict. Vote. Save.**
-An AI-powered food waste reduction platform for PG/college mess systems.
+### Predict. Vote. Save.
 
-SmartPlate AI helps PG owners and college mess staff reduce food wastage by tracking student attendance intent, collecting menu feedback, verifying meal consumption using QR codes, and using AI-based predictions to estimate how much food should be prepared.
+SmartPlate AI is an AI-powered food waste reduction and mess-management
+platform designed for hostels, PGs, colleges, and institutional mess systems.
+
+It enables students to confirm meal requirements, vote on menus, and verify
+meal collection through QR codes. Staff and administrators can monitor meal
+demand, manage menus, review attendance records, and use AI-supported insights
+to make better food-preparation decisions.
+
+The goal is to prepare the right amount of food, reduce unnecessary waste,
+lower operational costs, and make institutional mess management smarter.
 
 ---
 
