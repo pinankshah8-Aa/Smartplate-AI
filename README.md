@@ -81,17 +81,19 @@ SmartPlate AI uses Google Gemini AI to analyze attendance and menu sentiment dat
 
 ## 🛠️ Tech Stack
 
-| Category         | Technology                |
-| ---------------- | ------------------------- |
-| Framework        | Next.js 16                |
-| Language         | TypeScript                |
-| Styling          | Tailwind CSS              |
-| Animations       | Framer Motion             |
-| Charts           | Chart.js, react-chartjs-2 |
-| QR Code          | qrcode                    |
-| AI Engine        | Google Gemini API         |
-| State Management | LocalStorage              |
-| Runtime          | Node.js                   |
+| Category | Technologies |
+|---|---|
+| Frontend | Next.js 16, React 19, TypeScript |
+| Styling & UI | Tailwind CSS, Framer Motion, Lucide React, Sonner |
+| Backend | Node.js, Express.js, Next.js API Routes |
+| Database | MongoDB, Mongoose |
+| Authentication | JWT, bcryptjs |
+| AI Integration | Google Gemini API, OpenAI-compatible API |
+| QR System | QR Code Generator, HTML5 QR Code Scanner |
+| Charts & Analytics | Recharts |
+| Validation | Zod |
+| Deployment | Vercel |
+| Version Control | Git and GitHub |
 
 ---
 
