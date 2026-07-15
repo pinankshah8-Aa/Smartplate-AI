@@ -22,7 +22,7 @@ lower operational costs, and make institutional mess management smarter.
 ## 🔐 Demo Login
 
 | Role | Username | Password |
-|---|---|---|
+|------|----------|----------|
 | Student | `student` | `student123` |
 | Owner | `owner` | `admin123` |
 
@@ -106,13 +106,13 @@ The system helps staff prepare food based on actual demand instead of assumption
 ## 🛠️ Tech Stack
 
 | Category | Technologies |
-|---|---|
+|----------|--------------|
 | Frontend | Next.js 16, React 19, TypeScript |
 | Styling & UI | Tailwind CSS, Framer Motion, Lucide React, Sonner |
-| Backend | Node.js, Express.js, Next.js API Routes |
+| Backend | Next.js API Routes, Node.js |
 | Database | MongoDB, Mongoose |
 | Authentication | JWT, bcryptjs |
-| AI Integration | Google Gemini API, OpenAI-compatible API |
+| AI Integration | Google Gemini API |
 | QR System | QR Code Generator, HTML5 QR Code Scanner |
 | Charts & Analytics | Recharts |
 | Validation | Zod |
@@ -189,28 +189,22 @@ http://localhost:3000
 ## 📸 Screenshots
 
 ### Login / Landing Page
-
 ![Login Page](public/screenshots/01-login-page.png)
 
 ### Student Today Dashboard
-
 ![Student Today Dashboard](public/screenshots/02-student-today-dashboard.png)
 
-### Student Community & Voting
+### Student Weekly Menu
+![Student Weekly Menu](public/screenshots/03-student-weekly-menu.png)
 
-![Student Community](public/screenshots/03-student-community.png)
+### Admin Overview Dashboard
+![Admin Overview](public/screenshots/04-admin-overview.png)
 
-### Manager Overview Dashboard
+### Daily Menu Studio
+![Daily Menu Studio](public/screenshots/05-menu-studio.png)
 
-![Manager Overview](public/screenshots/04-manager-overview.png)
-
-### Manager Operations Panel
-
-![Manager Operations](public/screenshots/05-manager-operations.png)
-
-### Manager Students & Risk Panel
-
-![Manager Students Risk](public/screenshots/06-manager-students-risk.png)
+### Owner Management
+![Owner Management](public/screenshots/06-owner-management.png)
 
 
 ---
