@@ -15,6 +15,19 @@ lower operational costs, and make institutional mess management smarter.
 
 ---
 
+## 🌐 Live Demo
+
+[SmartPlate AI Live Demo](https://smartplate-ai-two.vercel.app/)
+
+## 🔐 Demo Login
+
+| Role | Username | Password |
+|---|---|---|
+| Student | `student` | `student123` |
+| Owner | `owner` | `admin123` |
+
+> Demo credentials are for project demonstration only.
+
 ## 🚨 Problem Statement
 
 In many PGs and college mess systems, food is prepared based on the total number of students instead of actual attendance or food demand. This creates multiple problems:
@@ -170,17 +183,6 @@ npm run dev
 ```text
 http://localhost:3000
 ```
-
----
-
-## 🔐 Demo Login
-
-| Role | Username | Password |
-|---|---|---|
-| Student | `student` | `student123` |
-| Owner | `owner` | `admin123` |
-
-> These credentials are provided only for project demonstration.
 
 ---
 
