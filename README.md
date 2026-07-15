@@ -219,17 +219,16 @@ This project is currently a hackathon MVP. It demonstrates the core idea using f
 
 ---
 
-## 🔮 Future Improvements
+## Future Improvements
 
-* Add MongoDB database integration.
-* Add real-time updates using WebSockets.
-* Add Web Push Notifications.
-* Add secure authentication.
-* Add role-based access for students and staff.
-* Add proper QR scanner module.
-* Add analytics for monthly food wastage.
-* Add test cases and CI workflow.
-* Deploy full-stack version.
+- Improve production-level security and validation
+- Add automated tests and CI workflow
+- Improve QR scanner reliability on mobile devices
+- Add more detailed monthly analytics
+- Add notification scheduling for real mess workflows
+- Improve AI prediction with larger historical datasets
+- Add mobile app version for daily student usage
+- Add beginner-friendly issues for open-source contributors
 
 ---
 
