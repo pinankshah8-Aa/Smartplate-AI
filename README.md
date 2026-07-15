@@ -100,20 +100,23 @@ SmartPlate AI uses Google Gemini AI to analyze attendance and menu sentiment dat
 ## 🏗️ Architecture Flow
 
 ```text
-Student
-   ↓
-Marks Attendance + Votes Menu
-   ↓
-Data Stored in Local State
-   ↓
-QR Code Generated
-   ↓
-Admin Dashboard Reads Data
-   ↓
-Gemini AI Analyzes Attendance + Sentiment
-   ↓
-Prediction Output: Required Portions + Waste Savings
-```
+Students / Staff / Admin / Owner
+                ↓
+       Next.js User Interface
+                ↓
+   Authentication and Role Access
+                ↓
+      Express.js + API Routes
+                ↓
+       MongoDB with Mongoose
+                ↓
+Meal Intent | Menus | Votes | QR Logs | User Data
+                ↓
+       Gemini AI Integration
+                ↓
+Meal Predictions | Insights | Waste Reduction
+                ↓
+   Socket.IO Real-Time Dashboard Updates
 
 ---
 
