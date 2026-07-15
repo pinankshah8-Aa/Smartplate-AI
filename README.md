@@ -174,12 +174,13 @@ http://localhost:3000
 
 ## 🔑 Demo Credentials
 
-### Admin Login
+## 🔐 Demo Login
 
-```text
-Username: admin
-Password: admin123
-```
+| Role | Username | Password |
+|---|---|---|
+| Owner | `owner` | `admin123` |
+
+> These credentials are provided only for project demonstration.
 
 ---
 
