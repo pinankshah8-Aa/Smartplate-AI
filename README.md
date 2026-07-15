@@ -19,8 +19,8 @@ lower operational costs, and make institutional mess management smarter.
 
 In many PGs and college mess systems, food is prepared based on the total number of students instead of actual attendance or food demand. This creates multiple problems:
 
-* **Blind Cooking:** Food is prepared for the full student count even when many students skip college.
-* **Food & Money Wastage:** If 10 students skip college and each meal costs ₹50, around ₹500 can be wasted in a single day.
+* **Blind Cooking:** Food is prepared for the full student count even when many students do not require meals.
+* **Food & Money Wastage:** If 10 students do not take meals and each meal costs ₹50, around ₹500 can be wasted in a single day.
 * **Menu Fatigue:** Students may dislike repetitive menus, leading to more uneaten food.
 * **No Real-Time Data:** Staff do not get accurate attendance or food demand updates before cooking.
 
@@ -30,17 +30,15 @@ In many PGs and college mess systems, food is prepared based on the total number
 
 SmartPlate AI solves this by combining:
 
-* **Attendance Intent Tracking**
+* **Meal Intent Tracking**
 * **Menu Voting**
 * **QR-Based Meal Verification**
 * **AI-Powered Portion Prediction**
-* **Admin and Student Dashboards**
-
+* **Student, Staff, Admin, and Owner Dashboards**
+  
 The system helps staff prepare food based on actual demand instead of assumptions.
 
 ---
-
-## ✨ Key Features
 
 ## ✨ Key Features
 
@@ -74,11 +72,11 @@ The system helps staff prepare food based on actual demand instead of assumption
 - Provide food-preparation and waste-reduction insights.
 - Display operational data through charts and dashboards.
 
-### ⚡ Real-Time Experience
+### ⚡ Responsive Experience
 
-- Live dashboard updates using Socket.IO.
-- Web Push reminders before meal-intent deadlines.
-- Responsive light and dark interfaces for different devices.
+- Clean responsive interface for student and staff workflows.
+- Light and dark mode support.
+- Designed for future real-time updates and notification support.
 
 ---
 
@@ -119,7 +117,7 @@ Students / Staff / Admin / Owner
                 ↓
    Authentication and Role Access
                 ↓
-      Express.js + API Routes
+      Next.js API Routes
                 ↓
        MongoDB with Mongoose
                 ↓
@@ -129,9 +127,9 @@ Meal Intent | Menus | Votes | QR Logs | User Data
                 ↓
 Meal Predictions | Insights | Waste Reduction
                 ↓
-   Socket.IO Real-Time Dashboard Updates
+   Real-Time Dashboard Updates
 
----
+```
 
 ## ⚙️ How to Run Locally
 
@@ -153,10 +151,13 @@ npm install
 Create a `.env.local` file in the root directory:
 
 ```env
+MONGODB_URI=your_mongodb_connection_string
+JWT_SECRET=your_jwt_secret
 GEMINI_API_KEY=your_gemini_api_key
 ```
 
 If the API key is not provided, the app can use mock prediction logic for demo purposes.
+Do not commit `.env.local` to GitHub. Use `.env.example` for placeholder values only.
 
 ### 4. Run the Development Server
 
@@ -172,12 +173,11 @@ http://localhost:3000
 
 ---
 
-## 🔑 Demo Credentials
-
 ## 🔐 Demo Login
 
 | Role | Username | Password |
 |---|---|---|
+| Student | `student` | `student123` |
 | Owner | `owner` | `admin123` |
 
 > These credentials are provided only for project demonstration.
@@ -215,7 +215,23 @@ http://localhost:3000
 
 ## 📌 Current Status
 
-This project is currently a hackathon MVP. It demonstrates the core idea using frontend dashboards, local state, QR generation, and AI-based prediction.
+SmartPlate AI is currently a working hackathon MVP with a deployed full-stack demo.
+
+The project includes:
+
+- Student meal intent tracking
+- Weekly menu viewing
+- Menu voting and feedback
+- QR-based meal collection verification
+- Staff/Admin dashboard
+- Owner-level role management
+- MongoDB database integration
+- JWT-based authentication
+- AI-supported prediction and insights
+- Responsive light and dark interface
+- Vercel deployment
+
+The current version is built for demo, portfolio, and open-source learning purposes.
 
 ---
 
