@@ -42,30 +42,43 @@ The system helps staff prepare food based on actual demand instead of assumption
 
 ## ✨ Key Features
 
-### 👨‍🎓 Student Side
+## ✨ Key Features
 
-* Mark whether the student is going to college.
-* View today’s menu.
-* Vote on the menu.
-* Generate QR code for meal verification.
-* Simple and responsive user interface.
+### 🎓 Student Portal
 
-### 🧑‍💼 Admin/Staff Side
+- Confirm whether a meal is required.
+- View today's menu and the complete weekly menu.
+- Vote and provide feedback on meals.
+- Generate a personal QR code for meal collection.
+- Receive deadline reminders and live status updates.
 
-* View student attendance intent.
-* Track expected meal count.
-* Monitor menu feedback.
-* Verify meals using QR status.
-* Use AI prediction to estimate required portions.
+### 👨‍💼 Staff and Manager Portal
 
-### 🤖 AI Prediction
+- Monitor students' meal requirements.
+- View expected and collected meal counts.
+- Create and update daily or weekly menus.
+- Scan student QR codes to verify meal collection.
+- Review attendance, collection history, and menu feedback.
 
-SmartPlate AI uses Google Gemini AI to analyze attendance and menu sentiment data to suggest:
+### 🛡️ Admin and Owner Control
 
-* Estimated number of portions to cook
-* Possible food wastage reduction
-* Menu improvement suggestions
-* What-if analysis for special situations
+- Manage students, staff, managers, and administrators.
+- Activate, deactivate, or remove user accounts.
+- Assign and update role-based permissions.
+- Access institution-level menus, attendance, and QR records.
+
+### 🤖 AI and Analytics
+
+- Predict the number of meals required.
+- Analyse attendance and menu feedback.
+- Provide food-preparation and waste-reduction insights.
+- Display operational data through charts and dashboards.
+
+### ⚡ Real-Time Experience
+
+- Live dashboard updates using Socket.IO.
+- Web Push reminders before meal-intent deadlines.
+- Responsive light and dark interfaces for different devices.
 
 ---
 
