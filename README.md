@@ -19,6 +19,10 @@ lower operational costs, and make institutional mess management smarter.
 
 [SmartPlate AI Live Demo](https://smartplate-ai-two.vercel.app/)
 
+## 🎥 Demo Video
+
+[Watch SmartPlate AI Demo on LinkedIn](https://www.linkedin.com/feed/update/urn:li:activity:7483115419353083904/)
+
 ## 🔐 Demo Login
 
 | Role | Username | Password |
